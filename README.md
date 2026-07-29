@@ -131,7 +131,7 @@ You should see both models listed.
 Open **PowerShell** and run:
 
 ```powershell
-git clone https://github.com/nish/Nish-Own-AI.git
+git clone https://github.com/ManishUpadhyay-dev/Nish-Own-AI.git
 cd Nish-Own-AI
 ```
 
