@@ -131,8 +131,8 @@ You should see both models listed.
 Open **PowerShell** and run:
 
 ```powershell
-git clone https://github.com/ManishUpadhyay-dev/Nish-Own-AI.git
-cd Nish-Own-AI
+git clone https://github.com/ManishUpadhyay-dev/EmbedSearch-Vector-Database-RAG-Engine.git
+cd EmbedSearch-Vector-Database-RAG-Engine
 ```
 
 ---
