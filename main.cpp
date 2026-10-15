@@ -1084,6 +1084,16 @@ int main() {
             "text/html");
     });
 
+    // Serve logo.jpg
+    svr.Get("/logo.jpg", [](const httplib::Request&, httplib::Response& res) {
+        std::ifstream f("logo.jpg", std::ios::binary);
+        if (!f.is_open()) { res.status = 404; return; }
+        res.set_content(
+            std::string(std::istreambuf_iterator<char>(f),
+                        std::istreambuf_iterator<char>()),
+            "image/jpeg");
+    });
+
     svr.listen("0.0.0.0", 8080);
     return 0;
 }

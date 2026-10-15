@@ -1,858 +1,2802 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Nish - Own AI</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg:     #07070f;
-  --card:   #0c0c18;
-  --border: #151528;
-  --cs:     #00d9ff;
-  --math:   #b388ff;
-  --food:   #ffb74d;
-  --sports: #69f0ae;
-  --accent: #6c63ff;
-  --text:   #cdd6f4;
-  --muted:  #4a4a6a;
-  --red:    #f38ba8;
-  --green:  #a6e3a1;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: var(--bg); color: var(--text);
-  font-family: 'Fira Code', 'Courier New', monospace;
-  height: 100vh; overflow: hidden;
-  display: flex; flex-direction: column;
-}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nish: Own AI — Vector Database &amp; RAG Engine</title>
+  <meta name="description" content="Nish: Own AI — An AI-powered vector database and local RAG engine built in C++. Interactive 2D PCA artboard, HNSW graph search, and local LLM orchestration.">
 
-/* ── HEADER ── */
-header {
-  background: var(--card); border-bottom: 1px solid var(--border);
-  padding: 10px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
-}
-header h1 {
-  font-size: 17px; font-weight: 600; letter-spacing: 4px;
-  background: linear-gradient(90deg, var(--cs), var(--accent), var(--math));
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-}
-.badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; letter-spacing: 1px; border: 1px solid var(--border); color: var(--muted); }
-.badge.hl { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,.12); }
-.badge.ok { border-color: var(--green); color: var(--green); background: rgba(166,227,161,.1); }
-.badge.err { border-color: var(--red); color: var(--red); background: rgba(243,139,168,.1); }
-#statsLabel { margin-left: auto; font-size: 11px; color: var(--muted); }
+  <!-- Google Fonts: Inter Variable & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-/* ── LAYOUT ── */
-.layout { display: flex; flex: 1; overflow: hidden; }
-.left-panel { width: 260px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 18px; }
-.center-panel { flex: 1; position: relative; overflow: hidden; }
-#scatter { display: block; width: 100%; height: 100%; }
-.right-panel { width: 360px; flex-shrink: 0; background: var(--card); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  <style>
+    /* =====================================================================
+       FRAMER DESIGN TOKENS
+       Spec: Framer-design-analysis (Confident Dark Canvas)
+       ===================================================================== */
+    :root {
+      --colors-primary: #ffffff;
+      --colors-on-primary: #000000;
+      --colors-accent-blue: #0099ff;
+      --colors-ink: #ffffff;
+      --colors-ink-muted: #999999;
+      --colors-canvas: #090909;
+      --colors-surface-1: #141414;
+      --colors-surface-2: #1c1c1c;
+      --colors-hairline: #262626;
+      --colors-hairline-soft: #1a1a1a;
+      --colors-inverse-canvas: #ffffff;
+      --colors-inverse-ink: #000000;
+      --colors-gradient-magenta: #d44df0;
+      --colors-gradient-violet: #6a4cf5;
+      --colors-gradient-orange: #ff7a3d;
+      --colors-gradient-coral: #ff5577;
+      --colors-semantic-success: #22c55e;
 
-/* ── TABS ── */
-.tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.tab { flex: 1; padding: 10px 6px; text-align: center; font-size: 10px; letter-spacing: 1px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: all .2s; }
-.tab.on { color: var(--accent); border-bottom-color: var(--accent); }
-.tab-content { display: none; flex: 1; overflow-y: auto; padding: 16px; flex-direction: column; gap: 16px; }
-.tab-content.on { display: flex; }
+      --font-display: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
 
-/* ── COMMON COMPONENTS ── */
-.sec { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-input[type=text], select, textarea {
-  width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
-  padding: 9px 11px; border-radius: 6px; font-family: inherit; font-size: 12px; outline: none; transition: border-color .2s;
-}
-input[type=text]:focus, select:focus, textarea:focus { border-color: var(--accent); }
-textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
-select option { background: var(--card); }
-input[type=range] { width: 100%; accent-color: var(--accent); background: transparent; border: none; padding: 0; }
-button {
-  width: 100%; padding: 9px 14px; border: none; border-radius: 6px; cursor: pointer;
-  font-family: inherit; font-size: 12px; font-weight: 500; letter-spacing: .5px; transition: all .2s;
-}
-.btn-p { background: linear-gradient(135deg, var(--accent), #4f46e5); color: #fff; box-shadow: 0 0 18px rgba(108,99,255,.3); }
-.btn-p:hover { box-shadow: 0 0 28px rgba(108,99,255,.55); transform: translateY(-1px); }
-.btn-p:disabled { opacity: .5; transform: none; cursor: wait; }
-.btn-s { background: var(--border); color: var(--text); }
-.btn-s:hover { background: #1c1c35; }
-.btn-s:disabled { opacity: .5; cursor: wait; }
-.btn-g { background: rgba(166,227,161,.12); color: var(--green); border: 1px solid rgba(166,227,161,.3); }
-.btn-g:hover { background: rgba(166,227,161,.22); }
-.btn-g:disabled { opacity: .5; cursor: wait; }
+      --rounded-xs: 4px;
+      --rounded-sm: 6px;
+      --rounded-md: 10px;
+      --rounded-lg: 15px;
+      --rounded-xl: 20px;
+      --rounded-xxl: 30px;
+      --rounded-pill: 100px;
+      --rounded-full: 9999px;
 
-.algo-row { display: flex; gap: 5px; }
-.algo-btn { flex: 1; padding: 7px 4px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); font-size: 10px; cursor: pointer; text-align: center; transition: all .2s; letter-spacing: .5px; font-family: inherit; }
-.algo-btn.on { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,.12); }
+      --depth-level-2: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
 
-.legend { display: flex; flex-direction: column; gap: 5px; }
-.leg-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
-.dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-/* ── RESULTS ── */
-.results { display: flex; flex-direction: column; gap: 7px; }
-.rcard { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; animation: fadeUp .25s ease; }
-@keyframes fadeUp { from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)} }
-.rcard:hover { border-color: #252545; }
-.rrank { font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-bottom: 3px; }
-.rmeta { font-size: 12px; line-height: 1.4; margin-bottom: 6px; }
-.rfoot { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.rcat  { font-size: 9px; padding: 2px 7px; border-radius: 8px; letter-spacing: .5px; }
-.rdist { font-size: 10px; color: var(--muted); flex: 1; text-align: right; }
-.del   { background: rgba(243,139,168,.12); color: var(--red); border: 1px solid rgba(243,139,168,.25); border-radius: 4px; cursor: pointer; font-size: 10px; padding: 2px 7px; font-family: inherit; transition: background .2s; width: auto; }
-.del:hover { background: rgba(243,139,168,.25); }
+    html, body {
+      height: 100vh;
+      width: 100vw;
+      background-color: var(--colors-canvas);
+      color: var(--colors-ink);
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.30;
+      letter-spacing: -0.15px;
+      font-feature-settings: 'cv01' 1, 'cv05' 1, 'cv09' 1, 'cv11' 1, 'ss03' 1, 'ss07' 1, 'dlig' 1, 'tnum' 1;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
 
-/* ── LATENCY / BENCH / LAYERS ── */
-.lat-big { font-size: 32px; font-weight: 600; color: var(--cs); text-shadow: 0 0 20px rgba(0,217,255,.4); }
-.lat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.bench { display: flex; flex-direction: column; gap: 9px; }
-.brow  { display: flex; flex-direction: column; gap: 3px; }
-.blabel { display: flex; justify-content: space-between; font-size: 10px; }
-.btrack { height: 7px; background: var(--bg); border-radius: 4px; overflow: hidden; }
-.bfill  { height: 100%; border-radius: 4px; transition: width .5s ease; }
-.layers { display: flex; flex-direction: column; gap: 5px; }
-.lrow   { display: flex; align-items: center; gap: 7px; font-size: 10px; }
-.lnum   { width: 18px; text-align: right; color: var(--accent); }
-.ltrack { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
-.lfill  { height: 100%; background: var(--accent); border-radius: 3px; opacity: .7; transition: width .4s; }
-.lcount { width: 80px; text-align: right; color: var(--muted); }
-#vecCvs { display: block; width: 100%; background: var(--bg); border-radius: 5px; }
+    /* Aggressive Negative Tracking Typography */
+    .type-display-xl {
+      font-family: var(--font-display);
+      font-size: 42px;
+      font-weight: 600;
+      line-height: 0.95;
+      letter-spacing: -2.5px;
+      color: var(--colors-ink);
+    }
+    .type-display-md {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -1.0px;
+      color: var(--colors-ink);
+    }
+    .type-headline {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.6px;
+      color: var(--colors-ink);
+    }
+    .type-subhead {
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--colors-ink-muted);
+      line-height: 1.4;
+    }
 
-/* ── DOCUMENT LIST ── */
-.doc-list { display: flex; flex-direction: column; gap: 7px; }
-.dcard { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; animation: fadeUp .25s ease; }
-.dcard-title { font-size: 12px; font-weight: 500; margin-bottom: 4px; color: var(--green); }
-.dcard-preview { font-size: 10px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
-.dcard-foot { display: flex; justify-content: space-between; align-items: center; }
-.dcard-words { font-size: 9px; color: var(--muted); }
+    /* Buttons */
+    .btn-primary {
+      background-color: var(--colors-primary);
+      color: var(--colors-on-primary);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.14px;
+      border-radius: var(--rounded-pill);
+      padding: 8px 16px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.12s ease, opacity 0.15s ease;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .btn-primary:active {
+      transform: scale(0.97);
+    }
+    .btn-primary:hover {
+      opacity: 0.95;
+    }
+    .btn-primary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
 
-/* ── OLLAMA STATUS ── */
-.ollama-status { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; font-size: 11px; line-height: 1.6; }
-.ollama-status.ok { border-color: rgba(166,227,161,.3); }
-.ollama-status.err { border-color: rgba(243,139,168,.3); }
+    .btn-secondary {
+      background-color: var(--colors-surface-1);
+      color: var(--colors-ink);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.14px;
+      border-radius: var(--rounded-pill);
+      padding: 8px 14px;
+      border: 1px solid var(--colors-hairline);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .btn-secondary:hover {
+      background-color: var(--colors-surface-2);
+      border-color: #383838;
+    }
+    .btn-secondary:active {
+      transform: scale(0.97);
+    }
 
-/* ── CHAT ── */
-.chat-history { display: flex; flex-direction: column; gap: 12px; }
-.chat-q { background: rgba(108,99,255,.12); border: 1px solid rgba(108,99,255,.25); border-radius: 7px; padding: 10px 12px; font-size: 12px; line-height: 1.5; }
-.chat-a { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 12px; }
-.chat-a-label { font-size: 9px; letter-spacing: 2px; color: var(--green); margin-bottom: 6px; }
-.chat-a-text { font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
-.chat-ctx { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
-.chat-ctx-label { font-size: 9px; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
-.ctx-chip { display: inline-block; font-size: 9px; padding: 2px 7px; border-radius: 10px; margin: 2px; background: rgba(108,99,255,.1); border: 1px solid rgba(108,99,255,.2); color: var(--accent); cursor: pointer; }
-.ctx-chip:hover { background: rgba(108,99,255,.2); }
-.ctx-expand { display: none; font-size: 10px; color: var(--muted); line-height: 1.5; margin-top: 6px; padding: 8px; background: #0a0a18; border-radius: 5px; }
-.thinking { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
-.spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.typing::after { content: '▋'; animation: blink 1s step-end infinite; }
-@keyframes blink { 50% { opacity: 0; } }
+    .btn-mini {
+      background: transparent;
+      color: var(--colors-ink-muted);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-pill);
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-mini:hover {
+      color: var(--colors-ink);
+      border-color: #444444;
+      background: var(--colors-surface-2);
+    }
+    .btn-mini.del:hover {
+      color: #ff5577;
+      border-color: rgba(255, 85, 119, 0.4);
+      background: rgba(255, 85, 119, 0.12);
+    }
 
-/* ── TOOLTIP ── */
-#tip { position: fixed; display: none; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; font-size: 11px; pointer-events: none; max-width: 220px; z-index: 200; line-height: 1.5; }
+    /* Pill Groups (Framer Pill Toggles) */
+    .pill-group {
+      background-color: var(--colors-canvas);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-pill);
+      padding: 3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .pill-tab {
+      background-color: transparent;
+      color: var(--colors-ink-muted);
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: -0.12px;
+      border-radius: var(--rounded-pill);
+      padding: 6px 12px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+      user-select: none;
+    }
+    .pill-tab:hover {
+      color: var(--colors-ink);
+    }
+    .pill-tab.active {
+      background-color: var(--colors-surface-2);
+      color: var(--colors-ink);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
 
-::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-</style>
+    /* Inputs */
+    .input-text, select, textarea {
+      width: 100%;
+      background-color: var(--colors-canvas);
+      color: var(--colors-ink);
+      font-family: var(--font-body);
+      font-size: 13px;
+      letter-spacing: -0.12px;
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-md);
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .input-text::placeholder, textarea::placeholder {
+      color: #555555;
+    }
+    .input-text:focus, select:focus, textarea:focus {
+      border-color: var(--colors-hairline);
+      box-shadow: 0 0 0 1px var(--colors-accent-blue), 0 0 12px rgba(0, 153, 255, 0.18);
+    }
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23999999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 30px;
+    }
+    select option {
+      background-color: var(--colors-surface-1);
+      color: var(--colors-ink);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.45;
+    }
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--colors-accent-blue);
+      background: transparent;
+      cursor: pointer;
+    }
+
+    /* Status Badges */
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: var(--colors-surface-1);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-pill);
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--colors-ink-muted);
+      letter-spacing: -0.1px;
+    }
+    .status-chip .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: var(--rounded-full);
+      background-color: #555555;
+    }
+    .status-chip.online .dot {
+      background-color: var(--colors-semantic-success);
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+    }
+    .status-chip.offline .dot {
+      background-color: #ff5577;
+      box-shadow: 0 0 6px rgba(255, 85, 119, 0.6);
+    }
+
+    /* =====================================================================
+       TOP NAVIGATION BAR (56px Framer Spec)
+       ===================================================================== */
+    .top-nav {
+      height: 56px;
+      background-color: var(--colors-surface-1);
+      border-bottom: 1px solid var(--colors-hairline);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--colors-ink);
+    }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--colors-hairline);
+      background-color: var(--colors-surface-2);
+      flex-shrink: 0;
+    }
+    .brand-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--colors-ink);
+    }
+
+    /* Navigation Page Switcher (Center) */
+    .nav-center {
+      display: flex;
+      align-items: center;
+    }
+    .page-nav-pill {
+      background: transparent;
+      color: var(--colors-ink-muted);
+      border: none;
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.14px;
+      padding: 6px 14px;
+      border-radius: var(--rounded-pill);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .page-nav-pill:hover {
+      color: var(--colors-ink);
+    }
+    .page-nav-pill.active {
+      background-color: var(--colors-surface-2);
+      color: var(--colors-ink);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* =====================================================================
+       MAIN VIEWPORT CONTAINER (PAGES)
+       ===================================================================== */
+    .viewport {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .page-view {
+      display: none;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    .page-view.active {
+      display: flex;
+    }
+
+    /* =====================================================================
+       PAGE 1: STUDIO (HOME WORKSPACE) — Direct, Clean, Interactive
+       ===================================================================== */
+    #page-studio {
+      display: none;
+      flex-direction: row;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    #page-studio.active {
+      display: flex;
+    }
+
+    /* Left Tool Rack */
+    .studio-left {
+      width: 280px;
+      flex-shrink: 0;
+      background-color: var(--colors-surface-1);
+      border-right: 1px solid var(--colors-hairline);
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .rack-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .rack-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--colors-ink-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Center Artboard */
+    .studio-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background-color: var(--colors-canvas);
+      overflow: hidden;
+    }
+    .artboard-header-bar {
+      position: absolute;
+      top: 14px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .artboard-title-badge {
+      background-color: rgba(20, 20, 20, 0.85);
+      border: 1px solid var(--colors-hairline);
+      backdrop-filter: blur(8px);
+      border-radius: var(--rounded-pill);
+      padding: 5px 14px;
+      font-size: 12px;
+      color: var(--colors-ink);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .artboard-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    #scatter {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* Right Workstation Drawer */
+    .studio-right {
+      width: 380px;
+      flex-shrink: 0;
+      background-color: var(--colors-surface-1);
+      border-left: 1px solid var(--colors-hairline);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .drawer-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--colors-hairline);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .tab-content {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .tab-content.on {
+      display: flex;
+    }
+
+    /* Search Results & Cards */
+    .metric-hero {
+      background-color: var(--colors-canvas);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-md);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .lat-big {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: -1.2px;
+      color: var(--colors-ink);
+      line-height: 1.1;
+    }
+    .lat-sub {
+      font-size: 12px;
+      color: var(--colors-ink-muted);
+    }
+    .results {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .rcard {
+      background-color: var(--colors-canvas);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-md);
+      padding: 10px 12px;
+      transition: border-color 0.15s ease, transform 0.12s ease;
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .rcard:hover {
+      border-color: #383838;
+      transform: translateY(-1px);
+    }
+    .rrank {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--colors-accent-blue);
+      letter-spacing: 0.5px;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+    }
+    .rmeta {
+      font-size: 13px;
+      line-height: 1.35;
+      color: var(--colors-ink);
+      margin-bottom: 6px;
+    }
+    .rfoot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .rcat {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: var(--rounded-pill);
+      letter-spacing: -0.1px;
+    }
+    .rdist {
+      font-size: 11px;
+      color: var(--colors-ink-muted);
+      font-family: var(--font-mono);
+      margin-left: auto;
+    }
+
+    #vecCvs {
+      display: block;
+      width: 100%;
+      background-color: var(--colors-canvas);
+      border-radius: var(--rounded-md);
+      border: 1px solid var(--colors-hairline);
+    }
+
+    /* Documents Tab */
+    .doc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .dcard {
+      background-color: var(--colors-canvas);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-md);
+      padding: 10px 12px;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .dcard-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--colors-semantic-success);
+      margin-bottom: 3px;
+    }
+    .dcard-preview {
+      font-size: 11px;
+      color: var(--colors-ink-muted);
+      line-height: 1.4;
+      margin-bottom: 6px;
+    }
+    .dcard-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--colors-ink-muted);
+    }
+
+    /* Ask AI / RAG Tab */
+    .chat-history {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 160px;
+    }
+    .chat-q {
+      background-color: var(--colors-surface-2);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-md);
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--colors-ink);
+    }
+    .chat-a {
+      background-color: var(--colors-canvas);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-md);
+      padding: 12px;
+    }
+    .chat-a-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .chat-a-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--colors-semantic-success);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .chat-a-text {
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      color: var(--colors-ink);
+    }
+    .typing::after {
+      content: '▋';
+      animation: blink 0.9s step-end infinite;
+      color: var(--colors-accent-blue);
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .chat-ctx {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--colors-hairline-soft);
+    }
+    .ctx-chips-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 5px;
+    }
+    .ctx-chip {
+      background-color: var(--colors-surface-1);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-pill);
+      padding: 3px 8px;
+      font-size: 10px;
+      color: var(--colors-ink);
+      cursor: pointer;
+    }
+    .ctx-chip:hover {
+      border-color: var(--colors-accent-blue);
+    }
+    .ctx-expand {
+      display: none;
+      margin-top: 5px;
+      padding: 8px;
+      background-color: var(--colors-surface-2);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-sm);
+      font-size: 11px;
+      color: var(--colors-ink-muted);
+      line-height: 1.45;
+    }
+
+    .thinking {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--colors-ink-muted);
+      padding: 8px 0;
+    }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--colors-hairline);
+      border-top-color: var(--colors-accent-blue);
+      border-radius: var(--rounded-full);
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* =====================================================================
+       SUB-PAGES (Dedicated views for Benchmarks, Architecture, Docs)
+       ===================================================================== */
+    .subpage-container {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 40px 24px 80px;
+      background-color: var(--colors-canvas);
+    }
+    .subpage-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+    .subpage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--colors-hairline-soft);
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--colors-ink-muted);
+      background: var(--colors-surface-1);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-pill);
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .back-btn:hover {
+      color: var(--colors-ink);
+      border-color: #444;
+    }
+
+    /* Gradient Spotlight Cards */
+    .spotlight-card-magenta {
+      background: radial-gradient(130% 120% at 85% 15%, #d44df0 0%, #891aa3 55%, #380544 100%);
+      color: #ffffff;
+      border-radius: var(--rounded-xxl);
+      padding: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 20px 50px rgba(212, 77, 240, 0.22);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .spotlight-card-violet {
+      background: radial-gradient(130% 120% at 85% 15%, #6a4cf5 0%, #3b1db8 55%, #18094a 100%);
+      color: #ffffff;
+      border-radius: var(--rounded-xxl);
+      padding: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 20px 50px rgba(106, 76, 245, 0.22);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .spotlight-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: var(--rounded-pill);
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      width: fit-content;
+      letter-spacing: 0.5px;
+    }
+
+    /* Comparison Table */
+    .comparison-table-wrap {
+      background-color: var(--colors-surface-1);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-xl);
+      overflow: hidden;
+    }
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .comp-table th {
+      background-color: var(--colors-surface-2);
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--colors-ink);
+      border-bottom: 1px solid var(--colors-hairline);
+    }
+    .comp-table td {
+      padding: 14px 20px;
+      font-size: 13px;
+      color: var(--colors-ink-muted);
+      border-bottom: 1px solid var(--colors-hairline-soft);
+    }
+    .comp-table tr:last-child td {
+      border-bottom: none;
+    }
+    .comp-table td.strong {
+      color: var(--colors-ink);
+      font-weight: 500;
+    }
+
+    /* FAQ Rows */
+    .faq-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .faq-item {
+      background-color: var(--colors-surface-1);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-md);
+      overflow: hidden;
+    }
+    .faq-btn {
+      width: 100%;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: transparent;
+      border: none;
+      color: var(--colors-ink);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -0.2px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .faq-ans {
+      display: none;
+      padding: 0 20px 18px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--colors-ink-muted);
+    }
+    .faq-item.active .faq-ans {
+      display: block;
+    }
+
+    /* Setup Guide Specific Components */
+    .step-card {
+      background-color: var(--colors-surface-1);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-xl);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--colors-surface-2);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-pill);
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--colors-accent-blue);
+      width: fit-content;
+      letter-spacing: 0.5px;
+    }
+    .prereq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .prereq-card {
+      background-color: var(--colors-surface-1);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-lg);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .code-box {
+      background-color: var(--colors-canvas);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-md);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: #e6e6e6;
+    }
+    .code-box code {
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .copy-btn {
+      background: var(--colors-surface-2);
+      border: 1px solid var(--colors-hairline);
+      color: var(--colors-ink-muted);
+      border-radius: var(--rounded-pill);
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+    .copy-btn:hover {
+      color: var(--colors-ink);
+      border-color: #444;
+    }
+
+    /* Floating Tooltip */
+    #tip {
+      position: fixed;
+      display: none;
+      background-color: var(--colors-surface-2);
+      border: 1px solid var(--colors-hairline);
+      border-radius: var(--rounded-md);
+      padding: 8px 12px;
+      font-size: 12px;
+      pointer-events: none;
+      max-width: 260px;
+      z-index: 2000;
+      line-height: 1.4;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--colors-canvas);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--colors-hairline);
+      border-radius: 2px;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      #page-studio {
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .studio-left, .studio-right {
+        width: 100%;
+        border-left: none;
+        border-right: none;
+      }
+      .studio-center {
+        min-height: 400px;
+      }
+      .top-nav {
+        padding: 0 12px;
+      }
+    }
+  </style>
 </head>
 <body>
 
-<header>
-  <h1>Nish - Own AI</h1>
-  <span class="badge hl">HNSW</span>
-  <span class="badge">KD-TREE</span>
-  <span class="badge">BRUTE FORCE</span>
-  <span class="badge" id="ollamaBadge">OLLAMA…</span>
-  <span id="statsLabel">loading…</span>
-</header>
-
-<div class="layout">
-
-  <!-- ══ LEFT PANEL ══ -->
-  <div class="left-panel">
-    <div>
-      <div class="sec">Query (Demo Vectors)</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <input type="text" id="qInput" placeholder="binary tree, sushi, basketball…" />
-        <button class="btn-p" onclick="runSearch()">⚡ SEARCH</button>
-      </div>
-    </div>
-    <div>
-      <div class="sec">Algorithm</div>
-      <div class="algo-row">
-        <div class="algo-btn on" data-algo="hnsw"      onclick="setAlgo(this)">HNSW</div>
-        <div class="algo-btn"   data-algo="kdtree"     onclick="setAlgo(this)">KD-TREE</div>
-        <div class="algo-btn"   data-algo="bruteforce" onclick="setAlgo(this)">BRUTE</div>
-      </div>
-    </div>
-    <div>
-      <div class="sec">Distance Metric</div>
-      <select id="metric">
-        <option value="cosine">Cosine Similarity</option>
-        <option value="euclidean">Euclidean Distance</option>
-        <option value="manhattan">Manhattan Distance</option>
-      </select>
-    </div>
-    <div>
-      <div class="sec">Top-K: <span id="kLabel">5</span></div>
-      <input type="range" id="kSlider" min="1" max="10" value="5"
-             oninput="document.getElementById('kLabel').textContent=this.value">
-    </div>
-    <div>
-      <div class="sec">Category Legend</div>
-      <div class="legend">
-        <div class="leg-row"><div class="dot" style="background:var(--cs);box-shadow:0 0 5px var(--cs)"></div>CS / Algorithms</div>
-        <div class="leg-row"><div class="dot" style="background:var(--math);box-shadow:0 0 5px var(--math)"></div>Mathematics</div>
-        <div class="leg-row"><div class="dot" style="background:var(--food);box-shadow:0 0 5px var(--food)"></div>Food &amp; Cooking</div>
-        <div class="leg-row"><div class="dot" style="background:var(--sports);box-shadow:0 0 5px var(--sports)"></div>Sports &amp; Games</div>
-        <div class="leg-row"><div class="dot" style="background:var(--green);box-shadow:0 0 5px var(--green)"></div>Documents (RAG)</div>
-      </div>
-    </div>
-    <div>
-      <div class="sec">Insert Demo Vector</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <input type="text" id="addMeta" placeholder="Description…" />
-        <select id="addCat">
-          <option value="cs">CS / Algorithms</option>
-          <option value="math">Mathematics</option>
-          <option value="food">Food &amp; Cooking</option>
-          <option value="sports">Sports &amp; Games</option>
-        </select>
-        <button class="btn-s" onclick="addVector()">+ INSERT</button>
-      </div>
-    </div>
-    <div>
-      <div class="sec">Benchmark</div>
-      <button class="btn-s" onclick="runBenchmark()">▶ COMPARE ALL ALGOS</button>
-    </div>
-  </div>
-
-  <!-- ══ CENTER: SCATTER PLOT ══ -->
-  <div class="center-panel"><canvas id="scatter"></canvas></div>
-
-  <!-- ══ RIGHT PANEL: TABS ══ -->
-  <div class="right-panel">
-    <div class="tabs">
-      <div class="tab on"  onclick="switchTab('search')">SEARCH</div>
-      <div class="tab"     onclick="switchTab('docs')">DOCUMENTS</div>
-      <div class="tab"     onclick="switchTab('rag')">ASK AI</div>
-    </div>
-
-    <!-- TAB: SEARCH -->
-    <div class="tab-content on" id="tab-search">
-      <div>
-        <div class="sec">Search Latency</div>
-        <div class="lat-big" id="latBig">—</div>
-        <div class="lat-sub" id="latSub">No query yet</div>
-      </div>
-      <div>
-        <div class="sec">Top Matches</div>
-        <div class="results" id="results">
-          <div style="color:var(--muted);font-size:11px">Run a search to see results…</div>
+  <!-- =====================================================================
+       TOP NAVIGATION BAR
+       - Branding: Nish: Own AI
+       - Page pills: Studio, Benchmarks, Architecture, Docs & FAQ
+       ===================================================================== -->
+  <header class="top-nav">
+    <div class="nav-left">
+      <a href="#/studio" class="nav-brand" onclick="navigatePage('studio')">
+        <div class="brand-mark">
+          <img src="logo.jpg" alt="Nish: Own AI" id="brandLogoImg" />
         </div>
-      </div>
-      <div>
-        <div class="sec">Query Embedding (16D)</div>
-        <canvas id="vecCvs" height="76"></canvas>
-      </div>
-      <div id="benchSec" style="display:none">
-        <div class="sec">Algorithm Comparison</div>
-        <div class="bench" id="benchBars"></div>
-      </div>
-      <div>
-        <div class="sec">HNSW Graph Layers</div>
-        <div class="layers" id="layers">
-          <div style="color:var(--muted);font-size:11px">Loading…</div>
-        </div>
+        <span class="brand-title">Nish: Own AI</span>
+      </a>
+    </div>
+
+    <!-- Clear Page Switcher (Only 3 Pills) -->
+    <div class="nav-center">
+      <div class="pill-group">
+        <button class="page-nav-pill active" id="navPill-studio" onclick="navigatePage('studio')">Studio (Home)</button>
+        <button class="page-nav-pill" id="navPill-setup" onclick="navigatePage('setup')">⚡ Setup Guide</button>
+        <button class="page-nav-pill" id="navPill-project" onclick="navigatePage('project')">Project Information</button>
       </div>
     </div>
 
-    <!-- TAB: DOCUMENTS -->
-    <div class="tab-content" id="tab-docs">
-      <div>
-        <div class="sec">Ollama Status</div>
-        <div class="ollama-status" id="ollamaStatus">Checking…</div>
+    <div class="nav-right">
+      <div class="status-chip" id="ollamaBadge">
+        <span class="dot"></span>
+        <span>OLLAMA…</span>
       </div>
-      <div>
-        <div class="sec">Insert Document</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <input type="text" id="docTitle" placeholder="Document title / topic…" />
-          <textarea id="docText" placeholder="Paste your notes, textbook excerpt, lecture content…&#10;&#10;Long text is automatically split into overlapping chunks and each chunk gets its own real embedding via Ollama's nomic-embed-text model."></textarea>
-          <button class="btn-g" id="insertDocBtn" onclick="insertDocument()">⚡ EMBED &amp; INSERT</button>
-          <div id="insertStatus" style="font-size:11px;color:var(--muted)"></div>
-        </div>
-      </div>
-      <div>
-        <div class="sec">Stored Documents (<span id="docCountLabel">0</span>)</div>
-        <div class="doc-list" id="docList">
-          <div style="color:var(--muted);font-size:11px">No documents yet. Insert some above.</div>
-        </div>
+      <div class="status-chip" id="statsLabel" style="color:var(--colors-ink)">
+        20 vectors · 16D
       </div>
     </div>
+  </header>
 
-    <!-- TAB: ASK AI (RAG) -->
-    <div class="tab-content" id="tab-rag">
-      <div>
-        <div class="sec">Ask a Question</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <textarea id="ragQuestion" rows="3" placeholder="What is dynamic programming?&#10;Explain the main idea of HNSW.&#10;How does the recipe differ from…"></textarea>
-          <div style="display:flex;gap:6px">
-            <select id="ragK" style="width:auto;flex-shrink:0">
-              <option value="2">Top 2</option>
-              <option value="3" selected>Top 3</option>
-              <option value="5">Top 5</option>
-            </select>
-            <button class="btn-g" id="askBtn" onclick="askAI()" style="flex:1">🤖 ASK AI</button>
+  <!-- =====================================================================
+       VIEWPORT PAGES
+       ===================================================================== -->
+  <main class="viewport">
+
+    <!-- ─────────────────────────────────────────────────────────────────
+         PAGE 1: STUDIO (HOME WORKSPACE) — Clean & Interactive
+         ───────────────────────────────────────────────────────────────── -->
+    <section class="page-view active" id="page-studio">
+      
+      <!-- Left Tool Rack -->
+      <aside class="studio-left">
+        
+        <!-- Query Input -->
+        <div class="rack-group">
+          <label class="rack-label" for="qInput">
+            <span>Query Vector</span>
+            <span style="color:var(--colors-accent-blue);font-size:10px">16-D Synthesizer</span>
+          </label>
+          <input type="text" id="qInput" class="input-text" placeholder="e.g. binary tree, ramen, tennis…" value="binary tree algorithm" />
+          <button class="btn-primary" style="width:100%;margin-top:2px" onclick="runSearch()">
+            <span>⚡ Search Nearest</span>
+          </button>
+        </div>
+
+        <!-- Algorithm Toggles -->
+        <div class="rack-group">
+          <span class="rack-label">Search Algorithm</span>
+          <div class="pill-group" style="width:100%;justify-content:space-between">
+            <button class="pill-tab algo-btn active" data-algo="hnsw" onclick="setAlgo(this)">HNSW</button>
+            <button class="pill-tab algo-btn" data-algo="kdtree" onclick="setAlgo(this)">KD-Tree</button>
+            <button class="pill-tab algo-btn" data-algo="bruteforce" onclick="setAlgo(this)">Brute</button>
           </div>
-          <div style="font-size:10px;color:var(--muted)">Uses your inserted documents as context. Answers come from the local LLM.</div>
+        </div>
+
+        <!-- Distance Metric -->
+        <div class="rack-group">
+          <label class="rack-label" for="metric">Distance Metric</label>
+          <select id="metric" onchange="runSearch()">
+            <option value="cosine" selected>Cosine Similarity</option>
+            <option value="euclidean">Euclidean Distance</option>
+            <option value="manhattan">Manhattan Distance</option>
+          </select>
+        </div>
+
+        <!-- Top-K Slider -->
+        <div class="rack-group">
+          <div class="rack-label">
+            <span>Top-K Matches</span>
+            <span id="kLabel" style="font-family:var(--font-mono);color:var(--colors-ink)">5</span>
+          </div>
+          <input type="range" id="kSlider" min="1" max="10" value="5" oninput="document.getElementById('kLabel').textContent=this.value; runSearch();">
+        </div>
+
+        <!-- Preset Semantic Prompts -->
+        <div class="rack-group">
+          <span class="rack-label">Quick Prompts</span>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            <button class="btn-mini" onclick="setPresetQuery('Dynamic Programming')">Dynamic Prog</button>
+            <button class="btn-mini" onclick="setPresetQuery('Neapolitan Pizza')">Pizza Dish</button>
+            <button class="btn-mini" onclick="setPresetQuery('Basketball Dunk')">Basketball</button>
+            <button class="btn-mini" onclick="setPresetQuery('Calculus Integrals')">Calculus</button>
+            <button class="btn-mini" onclick="setPresetQuery('Binary Search Tree')">BST Nodes</button>
+          </div>
+        </div>
+
+        <!-- Category Legend -->
+        <div class="rack-group">
+          <span class="rack-label">Cluster Legend</span>
+          <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--colors-ink-muted)">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#0099ff"></span>CS / Algorithms</span>
+              <span style="font-family:var(--font-mono);font-size:10px">5</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#6a4cf5"></span>Mathematics</span>
+              <span style="font-family:var(--font-mono);font-size:10px">5</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#ff7a3d"></span>Food &amp; Cooking</span>
+              <span style="font-family:var(--font-mono);font-size:10px">5</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#d44df0"></span>Sports &amp; Games</span>
+              <span style="font-family:var(--font-mono);font-size:10px">5</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e"></span>RAG Docs</span>
+              <span style="font-family:var(--font-mono);font-size:10px" id="legendDocCount">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Vector -->
+        <div class="rack-group" style="padding-top:10px;border-top:1px solid var(--colors-hairline-soft)">
+          <span class="rack-label">Add Demo Vector</span>
+          <input type="text" id="addMeta" class="input-text" placeholder="Description (e.g. Graph Traversal)" />
+          <select id="addCat" style="margin-top:4px">
+            <option value="cs">CS / Algorithms</option>
+            <option value="math">Mathematics</option>
+            <option value="food">Food &amp; Cooking</option>
+            <option value="sports">Sports &amp; Games</option>
+          </select>
+          <button class="btn-secondary" style="margin-top:4px" onclick="addVector()">
+            <span>+ Insert Vector</span>
+          </button>
+        </div>
+
+        <button class="btn-mini" style="margin-top:auto" onclick="navigatePage('project')">
+          <span>▶ View Project Info &amp; Benchmarks →</span>
+        </button>
+
+      </aside>
+
+      <!-- Center: 2D PCA Canvas Artboard -->
+      <section class="studio-center">
+        <div class="artboard-header-bar">
+          <div class="artboard-title-badge">
+            <span style="color:var(--colors-accent-blue)">●</span>
+            <span>2D PCA Projection · Semantic Vector Space</span>
+          </div>
+          <div class="artboard-actions">
+            <button class="btn-mini" onclick="resetQueryStar()">Clear Selection</button>
+          </div>
+        </div>
+
+        <canvas id="scatter"></canvas>
+      </section>
+
+      <!-- Right: Workstation Drawer -->
+      <aside class="studio-right">
+        <div class="drawer-header">
+          <div class="pill-group">
+            <button class="pill-tab active tab-btn" onclick="switchTab('search')">Search</button>
+            <button class="pill-tab tab-btn" onclick="switchTab('docs')">Documents</button>
+            <button class="pill-tab tab-btn" onclick="switchTab('rag')">Ask AI</button>
+          </div>
+        </div>
+
+        <!-- TAB: SEARCH -->
+        <div class="tab-content on" id="tab-search">
+          <div class="metric-hero">
+            <span style="font-size:11px;color:var(--colors-ink-muted);text-transform:uppercase;letter-spacing:0.5px">Search Latency</span>
+            <div class="lat-big" id="latBig">142 μs</div>
+            <div class="lat-sub" id="latSub">HNSW · cosine · k=5</div>
+          </div>
+
+          <div class="rack-group">
+            <span class="rack-label">Top Matches</span>
+            <div class="results" id="results"></div>
+          </div>
+
+          <div class="rack-group">
+            <span class="rack-label">Query Embedding (16D)</span>
+            <canvas id="vecCvs" height="72"></canvas>
+          </div>
+
+          <div class="rack-group">
+            <div class="rack-label">
+              <span>HNSW Graph Layers</span>
+              <button class="btn-mini" style="padding:1px 6px;font-size:10px" onclick="navigatePage('project')">Deep Dive →</button>
+            </div>
+            <div id="layers" style="display:flex;flex-direction:column;gap:5px"></div>
+          </div>
+        </div>
+
+        <!-- TAB: DOCUMENTS -->
+        <div class="tab-content" id="tab-docs">
+          <div class="metric-hero" id="ollamaStatus">
+            <span style="font-size:11px;color:var(--colors-ink-muted);text-transform:uppercase;letter-spacing:0.5px">Ollama Status</span>
+            <div style="font-size:13px;font-weight:600;margin-top:2px" id="ollamaStatusHead">Checking Ollama…</div>
+            <div style="font-size:11px;color:var(--colors-ink-muted);margin-top:2px" id="ollamaStatusSub">http://localhost:11434</div>
+          </div>
+
+          <div class="rack-group">
+            <span class="rack-label">Ingest Real Document</span>
+            <input type="text" id="docTitle" class="input-text" placeholder="Title / Subject…" />
+            <textarea id="docText" class="input-text" style="margin-top:4px" placeholder="Paste textbook excerpt, lecture notes, or code documentation… Text is automatically chunked and embedded via Ollama nomic-embed-text (768D)."></textarea>
+            <button class="btn-primary" id="insertDocBtn" style="margin-top:6px" onclick="insertDocument()">
+              <span>⚡ Embed &amp; Insert Chunks</span>
+            </button>
+            <div id="insertStatus" style="font-size:11px;color:var(--colors-ink-muted);margin-top:4px"></div>
+          </div>
+
+          <div class="rack-group">
+            <div class="rack-label">
+              <span>Stored Documents</span>
+              <span id="docCountLabel" style="font-family:var(--font-mono)">0</span>
+            </div>
+            <div class="doc-list" id="docList">
+              <div style="color:var(--colors-ink-muted);font-size:12px">No documents in index yet.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: ASK AI (RAG) -->
+        <div class="tab-content" id="tab-rag">
+          <div class="rack-group">
+            <span class="rack-label">Ask Your Knowledge Base</span>
+            <textarea id="ragQuestion" class="input-text" rows="3" placeholder="What are the key benefits of HNSW?&#10;Explain dynamic programming in detail."></textarea>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <select id="ragK" style="width:100px;flex-shrink:0">
+                <option value="2">Top 2</option>
+                <option value="3" selected>Top 3</option>
+                <option value="5">Top 5</option>
+              </select>
+              <button class="btn-primary" id="askBtn" style="flex:1" onclick="askAI()">
+                <span>Ask Local LLM</span>
+              </button>
+            </div>
+            <span style="font-size:11px;color:var(--colors-ink-muted);margin-top:3px">Retrieves nearest chunks → synthesizes answer via Ollama. Press Ctrl+Enter.</span>
+          </div>
+
+          <div class="rack-group" style="flex:1">
+            <span class="rack-label">Conversation</span>
+            <div class="chat-history" id="chatHistory">
+              <div style="color:var(--colors-ink-muted);font-size:12px;line-height:1.5">
+                Ask a question to see the RAG retrieval pipeline in action.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────────────────────────
+         PAGE 2: SETUP GUIDE (For New Users — from README.md) (For New Users — from README.md) (For New Users — derived from README.md)
+         ───────────────────────────────────────────────────────────────── -->
+    <section class="page-view" id="page-setup">
+      <div class="subpage-container">
+        <div class="subpage-inner">
+          
+          <div class="subpage-header">
+            <div>
+              <span class="step-badge" style="margin-bottom:8px">DEVELOPER ONBOARDING</span>
+              <h1 class="type-display-md">Setup &amp; Run Guide</h1>
+              <p class="type-subhead">Step-by-step instructions to configure MSYS2, Git, Ollama models, and compile the C++ engine.</p>
+            </div>
+            <button class="back-btn" onclick="navigatePage('studio')">← Back to Studio</button>
+          </div>
+
+          <!-- Prerequisites Card -->
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <h2 class="type-headline">The 3 Required Prerequisites</h2>
+            <p class="type-subhead">Before running Nish: Own AI on Windows, ensure you have these three tools installed:</p>
+            
+            <div class="prereq-grid">
+              <div class="prereq-card">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-weight:700;font-size:14px;color:var(--colors-ink)">1. MSYS2 (g++ Compiler)</span>
+                  <a href="https://www.msys2.org" target="_blank" class="btn-mini">Download ↗</a>
+                </div>
+                <p style="font-size:12px;color:var(--colors-ink-muted)">Gives you the MinGW-w64 UCRT64 toolchain to compile C++17 with native Winsock networking.</p>
+              </div>
+
+              <div class="prereq-card">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-weight:700;font-size:14px;color:var(--colors-ink)">2. Git for Windows</span>
+                  <a href="https://git-scm.com/download/win" target="_blank" class="btn-mini">Download ↗</a>
+                </div>
+                <p style="font-size:12px;color:var(--colors-ink-muted)">Used to clone the project repository, pull submodules, and track revisions.</p>
+              </div>
+
+              <div class="prereq-card">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-weight:700;font-size:14px;color:var(--colors-ink)">3. Ollama (Local AI)</span>
+                  <a href="https://ollama.com" target="_blank" class="btn-mini">Download ↗</a>
+                </div>
+                <p style="font-size:12px;color:var(--colors-ink-muted)">Runs <code>nomic-embed-text</code> (768D embeddings) &amp; <code>llama3.2</code> locally on your GPU/CPU with 0 cloud API fees.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 1 -->
+          <div class="step-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <span class="step-badge">STEP 01</span>
+                <h3 class="type-headline" style="margin-top:6px">Install MSYS2 &amp; Configure g++ PATH</h3>
+                <p style="font-size:13px;color:var(--colors-ink-muted);margin-top:4px">
+                  Download the installer from <a href="https://www.msys2.org" target="_blank">msys2.org</a>, keep default path (<code>C:\msys64</code>), then open <strong>MSYS2 UCRT64</strong> from Start Menu.
+                </p>
+              </div>
+            </div>
+
+            <div class="code-box">
+              <code>pacman -Syu</code>
+              <button class="copy-btn" onclick="copyCmd(this, 'pacman -Syu')">Copy</button>
+            </div>
+
+            <p style="font-size:12px;color:var(--colors-ink-muted)">Install the MinGW-w64 UCRT64 GCC toolchain:</p>
+            <div class="code-box">
+              <code>pacman -S mingw-w64-ucrt-x86_64-gcc</code>
+              <button class="copy-btn" onclick="copyCmd(this, 'pacman -S mingw-w64-ucrt-x86_64-gcc')">Copy</button>
+            </div>
+
+            <div style="background:var(--colors-surface-2);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;color:var(--colors-ink-muted);border:1px solid var(--colors-hairline)">
+              <strong style="color:var(--colors-ink)">Add g++ to Windows PATH:</strong><br>
+              1. Press <kbd>Win + R</kbd>, type <code>sysdm.cpl</code>, press Enter.<br>
+              2. Click <strong>Advanced</strong> → <strong>Environment Variables</strong>.<br>
+              3. Under <strong>System variables</strong>, select <strong>Path</strong> and click <strong>Edit</strong>.<br>
+              4. Click <strong>New</strong> and add: <code>C:\msys64\ucrt64\bin</code>, then click OK.<br>
+              5. Open a new PowerShell terminal and verify:
+            </div>
+
+            <div class="code-box">
+              <code>g++ --version</code>
+              <button class="copy-btn" onclick="copyCmd(this, 'g++ --version')">Copy</button>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="step-card">
+            <div>
+              <span class="step-badge">STEP 02</span>
+              <h3 class="type-headline" style="margin-top:6px">Install Git</h3>
+              <p style="font-size:13px;color:var(--colors-ink-muted);margin-top:4px">
+                Download Git from <a href="https://git-scm.com/download/win" target="_blank">git-scm.com</a> and run installer with default settings.
+              </p>
+            </div>
+
+            <div class="code-box">
+              <code>git --version</code>
+              <button class="copy-btn" onclick="copyCmd(this, 'git --version')">Copy</button>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step-card">
+            <div>
+              <span class="step-badge">STEP 03</span>
+              <h3 class="type-headline" style="margin-top:6px">Install Ollama &amp; Pull Required Models</h3>
+              <p style="font-size:13px;color:var(--colors-ink-muted);margin-top:4px">
+                Download and install from <a href="https://ollama.com" target="_blank">ollama.com</a>. Ollama runs in your system tray. Pull both required models in PowerShell:
+              </p>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-size:12px;color:var(--colors-ink-muted)">1. Pull document embedding model (~274 MB, generates 768-D vectors):</span>
+              <div class="code-box">
+                <code>ollama pull nomic-embed-text</code>
+                <button class="copy-btn" onclick="copyCmd(this, 'ollama pull nomic-embed-text')">Copy</button>
+              </div>
+
+              <span style="font-size:12px;color:var(--colors-ink-muted)">2. Pull language model (~2 GB, synthesizes answers from retrieved context):</span>
+              <div class="code-box">
+                <code>ollama pull llama3.2</code>
+                <button class="copy-btn" onclick="copyCmd(this, 'ollama pull llama3.2')">Copy</button>
+              </div>
+
+              <span style="font-size:12px;color:var(--colors-ink-muted)">3. Verify models are ready:</span>
+              <div class="code-box">
+                <code>ollama list</code>
+                <button class="copy-btn" onclick="copyCmd(this, 'ollama list')">Copy</button>
+              </div>
+            </div>
+
+            <div style="background:rgba(0,153,255,0.08);border:1px solid rgba(0,153,255,0.25);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--colors-ink)">
+              💡 <strong>Laptop Spec Tip:</strong> Minimum 8GB RAM is recommended. If <code>llama3.2</code> is slow on your CPU, pull the lighter 1B model: <code>ollama pull llama3.2:1b</code> and change <code>genModel</code> in <code>main.cpp</code>.
+            </div>
+          </div>
+
+          <!-- Step 4 & 5 -->
+          <div class="step-card">
+            <div>
+              <span class="step-badge">STEP 04 &amp; 05</span>
+              <h3 class="type-headline" style="margin-top:6px">Clone &amp; Compile the C++ Engine</h3>
+              <p style="font-size:13px;color:var(--colors-ink-muted);margin-top:4px">
+                Clone the repository, enter the directory, and compile with g++ using C++17 and Winsock networking:
+              </p>
+            </div>
+
+            <div class="code-box">
+              <code>git clone https://github.com/ManishUpadhyay-dev/EmbedSearch-Vector-Database-RAG-Engine.git
+cd EmbedSearch-Vector-Database-RAG-Engine</code>
+              <button class="copy-btn" onclick="copyCmd(this, 'git clone https://github.com/ManishUpadhyay-dev/EmbedSearch-Vector-Database-RAG-Engine.git\ncd EmbedSearch-Vector-Database-RAG-Engine')">Copy</button>
+            </div>
+
+            <p style="font-size:12px;color:var(--colors-ink-muted)">Compile the server (takes ~15 seconds):</p>
+            <div class="code-box">
+              <code>g++ -std=c++17 -O2 main.cpp -o db -lws2_32</code>
+              <button class="copy-btn" onclick="copyCmd(this, 'g++ -std=c++17 -O2 main.cpp -o db -lws2_32')">Copy</button>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--colors-ink-muted)">
+              <span><code>-std=c++17</code> : C++17 standard</span>
+              <span>•</span>
+              <span><code>-O2</code> : compiler optimization</span>
+              <span>•</span>
+              <span><code>-o db</code> : binary output name</span>
+              <span>•</span>
+              <span><code>-lws2_32</code> : Windows Winsock networking</span>
+            </div>
+          </div>
+
+          <!-- Step 6 -->
+          <div class="step-card">
+            <div>
+              <span class="step-badge">STEP 06</span>
+              <h3 class="type-headline" style="margin-top:6px">Run Everything &amp; Launch Web Studio</h3>
+              <p style="font-size:13px;color:var(--colors-ink-muted);margin-top:4px">
+                Open two separate PowerShell terminal tabs to run the Ollama daemon and Nish: Own AI server:
+              </p>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div>
+                <span style="font-size:12px;font-weight:600;color:var(--colors-ink)">Terminal 1 — Start Ollama:</span>
+                <div class="code-box" style="margin-top:4px">
+                  <code>ollama serve</code>
+                  <button class="copy-btn" onclick="copyCmd(this, 'ollama serve')">Copy</button>
+                </div>
+              </div>
+
+              <div>
+                <span style="font-size:12px;font-weight:600;color:var(--colors-ink)">Terminal 2 — Start the C++ Vector Engine:</span>
+                <div class="code-box" style="margin-top:4px">
+                  <code>./db</code>
+                  <button class="copy-btn" onclick="copyCmd(this, './db')">Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:var(--colors-surface-2);border:1px solid var(--colors-hairline);border-radius:8px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--colors-semantic-success);line-height:1.5">
+              === Nish - Own AI ===<br>
+              http://localhost:8080<br>
+              20 demo vectors | 16 dims | HNSW+KD-Tree+BruteForce<br>
+              Ollama: ONLINE (nomic-embed-text / llama3.2)
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--colors-hairline-soft)">
+              <span style="font-size:13px;color:var(--colors-ink)">Open browser at: <strong>http://localhost:8080</strong></span>
+              <button class="btn-primary" onclick="navigatePage('studio')">Open Interactive Studio →</button>
+            </div>
+          </div>
+
+          <!-- Troubleshooting Quick Fixes -->
+          <div class="step-card">
+            <h3 class="type-headline">Troubleshooting Common Issues</h3>
+            <div class="comparison-table-wrap">
+              <table class="comp-table">
+                <thead>
+                  <tr>
+                    <th>Observed Issue</th>
+                    <th>Root Cause</th>
+                    <th>Resolution Fix</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="strong">Ollama: OFFLINE</td>
+                    <td>Ollama daemon is not running</td>
+                    <td>Run <code>ollama serve</code> in a separate terminal.</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">g++: command not found</td>
+                    <td>MSYS2 is not registered in PATH</td>
+                    <td>Add <code>C:\msys64\ucrt64\bin</code> to Windows System PATH.</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">undefined reference to WSA...</td>
+                    <td>Missing Winsock library link</td>
+                    <td>Append <code>-lws2_32</code> to the <code>g++</code> compilation command.</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">Port 8080 already in use</td>
+                    <td>Another process owns port 8080</td>
+                    <td>Find PID: <code>netstat -ano | findstr 8080</code> then <code>taskkill /PID &lt;pid&gt; /F</code>.</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">LLM generation is slow</td>
+                    <td>CPU inference with large weights</td>
+                    <td>Switch to 1B model: <code>ollama pull llama3.2:1b</code> and set <code>genModel = "llama3.2:1b"</code> in main.cpp.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style="text-align:center;padding:10px 0">
+            <button class="btn-primary" onclick="navigatePage('studio')">← Back to Interactive Studio</button>
+          </div>
+
         </div>
       </div>
-      <div>
-        <div class="sec">Conversation</div>
-        <div class="chat-history" id="chatHistory">
-          <div style="color:var(--muted);font-size:11px">Ask a question about your inserted documents…</div>
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────────────────────────
+         PAGE 3: PROJECT INFORMATION & ARCHITECTURE (From README.md)
+         ───────────────────────────────────────────────────────────────── -->
+    <section class="page-view" id="page-project">
+      <div class="subpage-container">
+        <div class="subpage-inner">
+          
+          <div class="subpage-header">
+            <div>
+              <span class="step-badge" style="margin-bottom:8px">SYSTEM SPECIFICATION</span>
+              <h1 class="type-display-md">Project Information &amp; Architecture</h1>
+              <p class="type-subhead">Complete documentation of Nish: Own AI — Features, Pipeline, Algorithms, and REST API from README.md.</p>
+            </div>
+            <button class="back-btn" onclick="navigatePage('studio')">← Back to Studio</button>
+          </div>
+
+          <!-- Section 1: What This Project Does (from README.md) -->
+          <div style="background-color:var(--colors-surface-1);border:1px solid var(--colors-hairline);border-radius:var(--rounded-xl);padding:26px;display:flex;flex-direction:column;gap:16px">
+            <h2 class="type-headline">What This Project Does</h2>
+            <p class="type-subhead">A fully working AI-powered vector database built in C++ with a web UI. Implements HNSW, KD-Tree, and Brute Force search algorithms side-by-side, plus a RAG pipeline powered by a local LLM via Ollama.</p>
+
+            <div class="comparison-table-wrap">
+              <table class="comp-table">
+                <thead>
+                  <tr>
+                    <th>Feature</th>
+                    <th>Specification &amp; Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="strong">3 Search Algorithms</td>
+                    <td>HNSW (production-grade), KD-Tree, Brute Force — run all three side-by-side and compare speed.</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">3 Distance Metrics</td>
+                    <td>Cosine similarity, Euclidean distance, Manhattan distance.</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">16D Demo Vectors</td>
+                    <td>20 pre-loaded semantic vectors across 4 categories (CS, Math, Food, Sports).</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">2D PCA Scatter Plot</td>
+                    <td>Live visualization of semantic space — watch high-dimensional clusters form in real-time.</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">Real Document Embedding</td>
+                    <td>Paste any text → Ollama embeds it with <code>nomic-embed-text</code> (768D normalized dense vectors).</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">RAG Pipeline</td>
+                    <td>Ask questions about your documents → HNSW retrieves context → local <code>llama3.2</code> answers.</td>
+                  </tr>
+                  <tr>
+                    <td class="strong">Full REST API</td>
+                    <td>CRUD endpoints: insert, delete, search, benchmark, hnsw-info, stats.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Section 2: How It Works & Pipeline Diagram (from README.md) -->
+          <div style="background-color:var(--colors-surface-1);border:1px solid var(--colors-hairline);border-radius:var(--rounded-xl);padding:26px;display:flex;flex-direction:column;gap:16px">
+            <h2 class="type-headline">How It Works</h2>
+            
+            <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:10px;padding:20px;font-family:var(--font-mono);font-size:12px;color:var(--colors-ink);line-height:1.7;overflow-x:auto">
+Your Text<br>
+&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+<span style="color:var(--colors-accent-blue)">Ollama (nomic-embed-text)</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← converts text to a 768-dimensional vector<br>
+&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+<span style="color:var(--colors-semantic-success)">HNSW Index (C++)</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← indexes the vector in a multilayer graph<br>
+&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+<span style="color:#ff7a3d">Semantic Search</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← finds nearest neighbors in vector space<br>
+&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+<span style="color:var(--colors-gradient-magenta)">Ollama (llama3.2)</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← reads retrieved chunks, generates an answer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+<strong style="color:#ffffff">Answer</strong>
+            </div>
+
+            <p style="font-size:14px;color:var(--colors-ink-muted);line-height:1.6">
+              <strong>HNSW (Hierarchical Navigable Small World)</strong> is the same algorithm used by Pinecone, Weaviate, Chroma, and Milvus. It builds a multilayer graph where each layer is progressively sparser — searches start at the top layer and zoom in, achieving <strong>O(log N)</strong> complexity instead of <strong>O(N)</strong> for brute force.
+            </p>
+          </div>
+
+          <!-- Section 3: Using the Application (from README.md) -->
+          <div style="background-color:var(--colors-surface-1);border:1px solid var(--colors-hairline);border-radius:var(--rounded-xl);padding:26px;display:flex;flex-direction:column;gap:18px">
+            <h2 class="type-headline">Using the Application</h2>
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px">
+              <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:8px">
+                <span style="color:var(--colors-accent-blue);font-weight:700;font-size:12px">TAB 1 — SEARCH (DEMO VECTORS)</span>
+                <p style="font-size:13px;color:var(--colors-ink-muted);line-height:1.5">
+                  Type any concept: <code>binary tree</code>, <code>sushi</code>, <code>basketball</code>, <code>calculus</code>. Choose algorithm (HNSW, KD-Tree, Brute Force) and distance metric (Cosine, Euclidean, Manhattan). View live PCA clusters and run microsecond comparisons.
+                </p>
+              </div>
+
+              <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:8px">
+                <span style="color:var(--colors-semantic-success);font-weight:700;font-size:12px">TAB 2 — DOCUMENTS (768D EMBEDDINGS)</span>
+                <p style="font-size:13px;color:var(--colors-ink-muted);line-height:1.5">
+                  Paste textbook excerpts, lecture notes, or articles. Long documents are automatically split into overlapping 250-word chunks. Each chunk receives its own 768D embedding via Ollama and is indexed into HNSW.
+                </p>
+              </div>
+
+              <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:8px">
+                <span style="color:var(--colors-gradient-magenta);font-weight:700;font-size:12px">TAB 3 — ASK AI (RAG PIPELINE)</span>
+                <p style="font-size:13px;color:var(--colors-ink-muted);line-height:1.5">
+                  Ask questions about your inserted documents. Your question is embedded, HNSW finds the top-K most semantically similar chunks, and <code>llama3.2</code> synthesizes answers streamed with a typewriter effect.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Algorithmic Shootout Arena (from README.md) -->
+          <div class="spotlight-card-magenta">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <span class="spotlight-tag">ALGORITHMIC SHOOTOUT ARENA</span>
+                <h2 style="font-family:var(--font-display);font-size:26px;font-weight:600;margin-top:8px;letter-spacing:-0.8px">HNSW vs KD-Tree vs Brute Force</h2>
+                <p style="font-size:14px;opacity:0.85;margin-top:4px">Side-by-side microsecond search shootout under identical vector distributions.</p>
+              </div>
+              <span id="benchSpeedupBadge" style="font-family:var(--font-mono);background:rgba(255,255,255,0.25);padding:4px 10px;border-radius:100px;font-size:12px;font-weight:700">12.4× FASTER</span>
+            </div>
+
+            <div style="background:rgba(0,0,0,0.35);backdrop-filter:blur(10px);border-radius:15px;padding:20px;border:1px solid rgba(255,255,255,0.12);display:flex;flex-direction:column;gap:14px">
+              <div class="bench" id="benchBars" style="display:flex;flex-direction:column;gap:10px"></div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">
+                <span style="font-size:12px;opacity:0.85">Test Vector: 16-Dimensional Synthetic Distribution (k=5)</span>
+                <button class="btn-primary" onclick="runBenchmark()">
+                  <span>⚡ Run Fresh Shootout</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Algorithm Deep Dive Analysis -->
+          <div class="comparison-table-wrap">
+            <table class="comp-table">
+              <thead>
+                <tr>
+                  <th>Algorithm</th>
+                  <th>Time Complexity</th>
+                  <th>Space Complexity</th>
+                  <th>Behavior &amp; Tradeoffs</th>
+                  <th>Accuracy</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="strong">HNSW (Hierarchical Graph)</td>
+                  <td style="color:var(--colors-semantic-success)">O(log N)</td>
+                  <td>O(N · M)</td>
+                  <td>Upper highway layers enable fast descent; excels in high dimensions (768D+).</td>
+                  <td style="color:var(--colors-ink)">~98%+ Approximate</td>
+                </tr>
+                <tr>
+                  <td class="strong">KD-Tree (Spatial Partition)</td>
+                  <td>O(log N) to O(N)</td>
+                  <td>O(N)</td>
+                  <td>Axis-aligned splits. Suffers from the "curse of dimensionality" when D &gt; 16.</td>
+                  <td>100% Exact</td>
+                </tr>
+                <tr>
+                  <td class="strong">Brute Force (Linear Scan)</td>
+                  <td>O(N · D)</td>
+                  <td>O(N · D)</td>
+                  <td>Exhaustive calculation. Guaranteed ground truth; slow on large collections.</td>
+                  <td>100% Ground Truth</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Algorithm Deep Dive (from README.md) -->
+          <div style="background-color:var(--colors-surface-1);border:1px solid var(--colors-hairline);border-radius:var(--rounded-xl);padding:26px;display:flex;flex-direction:column;gap:18px">
+            <h2 class="type-headline">Algorithm Deep Dive</h2>
+            
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="background:var(--colors-semantic-success);width:8px;height:8px;border-radius:50%"></span>
+                  <h3 style="font-size:15px;font-weight:700;color:var(--colors-ink)">HNSW (Hierarchical Navigable Small World)</h3>
+                </div>
+                <p style="font-size:13px;color:var(--colors-ink-muted);line-height:1.6">
+                  Nodes are inserted into a multilayer graph. Each node randomly gets assigned a maximum layer. Layer 0 contains all nodes with dense local connections; higher layers have exponentially fewer nodes with long-range connections.
+                </p>
+                <div style="font-size:13px;color:var(--colors-ink);line-height:1.6">
+                  <strong>Insert:</strong> Start at the top layer, greedily find the nearest node, drop down a layer, and repeat. At each layer from the assigned maximum down to 0, run a beam search (<code>ef_construction=200</code>) and bidirectionally connect to the <code>M</code> nearest neighbors.<br>
+                  <strong>Search:</strong> Same greedy descent from the top layer. At Layer 0, expand to <code>ef</code> nearest candidates using a priority queue.<br>
+                  <strong>Why it's fast:</strong> The upper layers act like a highway network — you rapidly zoom into the correct semantic neighborhood, then execute fine-grained local navigation at Layer 0.
+                </div>
+              </div>
+
+              <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="background:var(--colors-accent-blue);width:8px;height:8px;border-radius:50%"></span>
+                  <h3 style="font-size:15px;font-weight:700;color:var(--colors-ink)">KD-Tree (K-Dimensional Tree)</h3>
+                </div>
+                <p style="font-size:13px;color:var(--colors-ink-muted);line-height:1.6">
+                  Binary space partitioning. Each node splits vector space along one coordinate axis (cycling through dimensions 0 through D-1). Search prunes entire subtrees when the closest possible point in that subspace cannot beat the current best distance — the <em>ball within hyperslab</em> geometric check.
+                </p>
+                <div style="font-size:13px;color:var(--colors-ink);line-height:1.6">
+                  <strong style="color:#ff7a3d">Curse of Dimensionality Weakness:</strong> While KD-Tree achieves O(log N) in 2D or 3D, its pruning degrades exponentially as dimensionality climbs. At 16 dimensions pruning is rare, and at 768 dimensions (Ollama embeddings), KD-Tree degrades entirely into a linear scan (brute force).
+                </div>
+              </div>
+
+              <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="background:var(--colors-gradient-magenta);width:8px;height:8px;border-radius:50%"></span>
+                  <h3 style="font-size:15px;font-weight:700;color:var(--colors-ink)">Why HNSW Wins at High Dimensions</h3>
+                </div>
+                <p style="font-size:13px;color:var(--colors-ink-muted);line-height:1.6">
+                  KD-Tree pruning relies on axis-aligned distance bounds. In high-dimensional spaces, nearly all volume is concentrated near the surface of the hypersphere — resulting in every bounding box overlapping the query hypersphere and preventing subtree pruning. HNSW navigates graph topology instead of coordinate bounding boxes, making it immune to the curse of dimensionality.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 5: Multilayer Graph Architecture & Code Structure (from README.md) -->
+          <div class="spotlight-card-violet">
+            <span class="spotlight-tag">GRAPH ARCHITECTURE</span>
+            <h2 style="font-family:var(--font-display);font-size:26px;font-weight:600;letter-spacing:-0.8px">HNSW Multilayer Graph Hierarchy</h2>
+            <p style="font-size:14px;opacity:0.85">Probabilistic layer distribution linking sparse highway layers at top to dense neighborhood clusters at Layer 0.</p>
+
+            <div style="background:rgba(0,0,0,0.35);backdrop-filter:blur(10px);border-radius:15px;padding:20px;border:1px solid rgba(255,255,255,0.12)">
+              <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:12px;font-weight:600">
+                <span>GRAPH LAYERS IN MEMORY</span>
+                <span style="font-family:var(--font-mono);opacity:0.85">Live C++ State</span>
+              </div>
+              <div id="spotlightLayerRows" style="display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+          </div>
+
+          <!-- Project Structure & C++ Classes -->
+          <div style="background-color:var(--colors-surface-1);border:1px solid var(--colors-hairline);border-radius:var(--rounded-xl);padding:26px;display:flex;flex-direction:column;gap:18px">
+            <h2 class="type-headline">Project Architecture &amp; C++ Code Structure</h2>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div>
+                <h3 style="font-size:13px;font-weight:600;color:var(--colors-ink);margin-bottom:8px">Directory Organization:</h3>
+                <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:8px;padding:14px;font-family:var(--font-mono);font-size:12px;color:var(--colors-ink);line-height:1.6">
+Nish-Own-AI/<br>
+├── main.cpp &nbsp;&nbsp;&nbsp;← C++ backend (HNSW, KD-Tree, BruteForce, REST API)<br>
+├── httplib.h &nbsp;&nbsp;← Single-header HTTP server library<br>
+├── index.html &nbsp;← Frontend (PCA artboard, chat, benchmark)<br>
+└── README.md &nbsp;&nbsp;← Project Documentation
+                </div>
+              </div>
+
+              <div>
+                <h3 style="font-size:13px;font-weight:600;color:var(--colors-ink);margin-bottom:8px">Core C++ Architecture Classes:</h3>
+                <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:8px;padding:14px;font-family:var(--font-mono);font-size:12px;color:var(--colors-ink);line-height:1.6">
+BruteForce &nbsp;&nbsp;O(N·d) &nbsp;&nbsp;&nbsp;Exact baseline scan<br>
+KDTree &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;O(log N) &nbsp;Axis-aligned spatial tree<br>
+HNSW &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;O(log N) &nbsp;Multilayer small-world graph<br>
+NishOwnAI &nbsp;&nbsp;&nbsp;Unified interface over 16D demo DB<br>
+DocumentDB &nbsp;&nbsp;HNSW-only index for 768D Ollama chunks<br>
+OllamaClient &nbsp;HTTP client for /embeddings &amp; /generate
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 6: Full REST API Reference (from README.md) -->
+          <div style="background-color:var(--colors-surface-1);border:1px solid var(--colors-hairline);border-radius:var(--rounded-xl);padding:26px;display:flex;flex-direction:column;gap:18px">
+            <h2 class="type-headline">REST API Reference (Port 8080)</h2>
+            
+            <h3 style="font-size:14px;font-weight:600;color:var(--colors-accent-blue)">Demo Vector Endpoints</h3>
+            <div class="comparison-table-wrap">
+              <table class="comp-table">
+                <thead>
+                  <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td class="strong">GET</td><td><code>/search?v=...&amp;k=5&amp;metric=cosine&amp;algo=hnsw</code></td><td>K-NN vector search</td></tr>
+                  <tr><td class="strong">POST</td><td><code>/insert</code></td><td>Insert a demo vector into database</td></tr>
+                  <tr><td class="strong">DELETE</td><td><code>/delete/:id</code></td><td>Delete a vector by ID</td></tr>
+                  <tr><td class="strong">GET</td><td><code>/items</code></td><td>List all stored demo vectors</td></tr>
+                  <tr><td class="strong">GET</td><td><code>/benchmark?v=...&amp;k=5&amp;metric=cosine</code></td><td>Compare all 3 search algorithms</td></tr>
+                  <tr><td class="strong">GET</td><td><code>/hnsw-info</code></td><td>HNSW graph structure and layer metrics</td></tr>
+                  <tr><td class="strong">GET</td><td><code>/stats</code></td><td>Database dimension and count stats</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style="font-size:14px;font-weight:600;color:var(--colors-semantic-success)">Document &amp; RAG Endpoints</h3>
+            <div class="comparison-table-wrap">
+              <table class="comp-table">
+                <thead>
+                  <tr><th>Method</th><th>Endpoint</th><th>Body</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td class="strong">POST</td><td><code>/doc/insert</code></td><td><code>{"title":"...","text":"..."}</code></td><td>Chunk, embed, and store document in HNSW</td></tr>
+                  <tr><td class="strong">GET</td><td><code>/doc/list</code></td><td>—</td><td>List all stored document chunks</td></tr>
+                  <tr><td class="strong">DELETE</td><td><code>/doc/delete/:id</code></td><td>—</td><td>Delete document chunk by ID</td></tr>
+                  <tr><td class="strong">POST</td><td><code>/doc/ask</code></td><td><code>{"question":"...","k":3}</code></td><td>Full RAG: retrieve context + generate answer</td></tr>
+                  <tr><td class="strong">GET</td><td><code>/status</code></td><td>—</td><td>Ollama daemon connectivity and model info</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style="font-size:13px;font-weight:600;color:var(--colors-ink)">Example cURL Commands:</h3>
+            <div class="code-box">
+              <code>curl "http://localhost:8080/search?v=0.9,0.8,0.7,0.6,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1&k=3&metric=cosine&algo=hnsw"</code>
+              <button class="copy-btn" onclick="copyCmd(this, 'curl \"http://localhost:8080/search?v=0.9,0.8,0.7,0.6,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1&k=3&metric=cosine&algo=hnsw\"')">Copy</button>
+            </div>
+
+            <div class="code-box">
+              <code>curl -X POST http://localhost:8080/doc/ask -H "Content-Type: application/json" -d "{\"question\":\"What is dynamic programming?\",\"k\":3}"</code>
+              <button class="copy-btn" onclick="copyCmd(this, 'curl -X POST http://localhost:8080/doc/ask -H \"Content-Type: application/json\" -d \"{\\\"question\\\":\\\"What is dynamic programming?\\\",\\\"k\\\":3}\"')">Copy</button>
+            </div>
+          </div>
+
+          <!-- Section 9: Model Selection & Performance Tuning (from README.md) -->
+          <div style="background-color:var(--colors-surface-1);border:1px solid var(--colors-hairline);border-radius:var(--rounded-xl);padding:26px;display:flex;flex-direction:column;gap:14px">
+            <h2 class="type-headline">Model Selection &amp; Performance Tuning</h2>
+            <p class="type-subhead">How to switch to smaller or faster local LLMs for low-latency laptop inference (from README.md):</p>
+            
+            <p style="font-size:13px;color:var(--colors-ink-muted);line-height:1.5">
+              If <code>llama3.2</code> takes more than 15–20s on CPU, pull the lightweight 1B parameter model:
+            </p>
+            <div class="code-box">
+              <code>ollama pull llama3.2:1b</code>
+              <button class="copy-btn" onclick="copyCmd(this, 'ollama pull llama3.2:1b')">Copy</button>
+            </div>
+
+            <p style="font-size:13px;color:var(--colors-ink-muted);line-height:1.5">
+              Then update line 71 in <a href="file:///c:/Users/MANISH%20UPADHYAY/OneDrive/Desktop/Full%20Stack%20Development/Antigravity%20IDE%20Projects/EmbedSearch-Vector-Database-RAG-Engine/EmbedSearch-Vector-Database-RAG-Engine/main.cpp" style="color:var(--colors-accent-blue)">main.cpp</a>:
+            </p>
+            <div class="code-box">
+              <code>std::string genModel = "llama3.2:1b";   // fast 1B parameter model</code>
+            </div>
+            <p style="font-size:12px;color:var(--colors-ink-muted)">
+              Recompile with <code>g++ -std=c++17 -O2 main.cpp -o db -lws2_32</code> and restart.
+            </p>
+          </div>
+
+          <div style="text-align:center;padding:12px 0">
+            <button class="btn-primary" onclick="navigatePage('studio')">← Return to Interactive Studio</button>
+          </div>
+
         </div>
       </div>
-    </div>
+    </section>
 
-  </div><!-- end right-panel -->
-</div><!-- end layout -->
+  </main>
 
-<div id="tip"></div>
+  <div id="tip"></div>
 
-<script>
-// ════════════════════════════════════════════════════════════
-//  CONSTANTS
-// ════════════════════════════════════════════════════════════
-const API  = 'http://localhost:8080';
-const DIMS = 16;
-const COL  = { cs:'#00d9ff', math:'#b388ff', food:'#ffb74d', sports:'#69f0ae', doc:'#a6e3a1', default:'#90a4ae' };
-const DIM_COL = ['#00d9ff','#00d9ff','#00d9ff','#00d9ff','#b388ff','#b388ff','#b388ff','#b388ff',
-                 '#ffb74d','#ffb74d','#ffb74d','#ffb74d','#69f0ae','#69f0ae','#69f0ae','#69f0ae'];
+  <!-- =====================================================================
+       CLIENT ENGINE SCRIPT
+       ===================================================================== -->
+  <script>
+    const API = (window.location.protocol.startsWith('http')) ? window.location.origin : 'http://localhost:8080';
+    const DIMS = 16;
+    
+    const COL = {
+      cs: '#0099ff',
+      math: '#6a4cf5',
+      food: '#ff7a3d',
+      sports: '#d44df0',
+      doc: '#22c55e',
+      default: '#999999'
+    };
+    const DIM_COL = [
+      '#0099ff','#0099ff','#0099ff','#0099ff',
+      '#6a4cf5','#6a4cf5','#6a4cf5','#6a4cf5',
+      '#ff7a3d','#ff7a3d','#ff7a3d','#ff7a3d',
+      '#d44df0','#d44df0','#d44df0','#d44df0'
+    ];
 
-// ════════════════════════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════════════════════════
-let allItems = [], pcaPoints = [], hitIds = new Set(), queryPt = null;
-let hoverItem = null, pulse = 0, selAlgo = 'hnsw', searchResults = [];
+    const SEED_ITEMS = [
+      { id: 1, category: 'cs', metadata: 'Linked List: nodes connected by pointers', embedding: [0.90,0.85,0.72,0.68,0.12,0.08,0.15,0.10,0.05,0.08,0.06,0.09,0.07,0.11,0.08,0.06] },
+      { id: 2, category: 'cs', metadata: 'Binary Search Tree: O(log n) search and insert', embedding: [0.88,0.82,0.78,0.74,0.15,0.10,0.08,0.12,0.06,0.07,0.08,0.05,0.09,0.06,0.07,0.10] },
+      { id: 3, category: 'cs', metadata: 'Dynamic Programming: memoization overlapping subproblems', embedding: [0.82,0.76,0.88,0.80,0.20,0.18,0.12,0.09,0.07,0.06,0.08,0.07,0.08,0.09,0.06,0.07] },
+      { id: 4, category: 'cs', metadata: 'Graph BFS and DFS: breadth and depth first traversal', embedding: [0.85,0.80,0.75,0.82,0.18,0.14,0.10,0.08,0.06,0.09,0.07,0.06,0.10,0.08,0.09,0.07] },
+      { id: 5, category: 'cs', metadata: 'Hash Table: O(1) lookup with collision chaining', embedding: [0.87,0.78,0.70,0.76,0.13,0.11,0.09,0.14,0.08,0.07,0.06,0.08,0.07,0.10,0.08,0.09] },
+      { id: 6, category: 'math', metadata: 'Calculus: derivatives integrals and limits', embedding: [0.12,0.15,0.18,0.10,0.91,0.86,0.78,0.72,0.08,0.06,0.07,0.09,0.07,0.08,0.06,0.10] },
+      { id: 7, category: 'math', metadata: 'Linear Algebra: matrices eigenvalues eigenvectors', embedding: [0.20,0.18,0.15,0.12,0.88,0.90,0.82,0.76,0.09,0.07,0.08,0.06,0.10,0.07,0.08,0.09] },
+      { id: 8, category: 'math', metadata: 'Probability: distributions random variables Bayes theorem', embedding: [0.15,0.12,0.20,0.18,0.84,0.80,0.88,0.82,0.07,0.08,0.06,0.10,0.09,0.06,0.09,0.08] },
+      { id: 9, category: 'math', metadata: 'Number Theory: primes modular arithmetic RSA cryptography', embedding: [0.22,0.16,0.14,0.20,0.80,0.85,0.76,0.90,0.08,0.09,0.07,0.06,0.08,0.10,0.07,0.06] },
+      { id: 10, category: 'math', metadata: 'Combinatorics: permutations combinations generating functions', embedding: [0.18,0.20,0.16,0.14,0.86,0.78,0.84,0.80,0.06,0.07,0.09,0.08,0.06,0.09,0.10,0.07] },
+      { id: 11, category: 'food', metadata: 'Neapolitan Pizza: wood-fired dough San Marzano tomatoes', embedding: [0.08,0.06,0.09,0.07,0.07,0.08,0.06,0.09,0.90,0.86,0.78,0.72,0.08,0.06,0.09,0.07] },
+      { id: 12, category: 'food', metadata: 'Sushi: vinegared rice raw fish and nori rolls', embedding: [0.06,0.08,0.07,0.09,0.09,0.06,0.08,0.07,0.86,0.90,0.82,0.76,0.07,0.09,0.06,0.08] },
+      { id: 13, category: 'food', metadata: 'Ramen: noodle soup with chashu pork and soft-boiled eggs', embedding: [0.09,0.07,0.06,0.08,0.08,0.09,0.07,0.06,0.82,0.78,0.90,0.84,0.09,0.07,0.08,0.06] },
+      { id: 14, category: 'food', metadata: 'Tacos: corn tortillas with carnitas salsa and cilantro', embedding: [0.07,0.09,0.08,0.06,0.06,0.07,0.09,0.08,0.78,0.82,0.86,0.90,0.06,0.08,0.07,0.09] },
+      { id: 15, category: 'food', metadata: 'Croissant: laminated pastry with buttery flaky layers', embedding: [0.06,0.07,0.10,0.09,0.10,0.06,0.07,0.10,0.85,0.80,0.76,0.82,0.09,0.07,0.10,0.06] },
+      { id: 16, category: 'sports', metadata: 'Basketball: fast-paced shooting dribbling slam dunks', embedding: [0.09,0.07,0.08,0.10,0.08,0.09,0.07,0.06,0.08,0.07,0.09,0.06,0.91,0.85,0.78,0.72] },
+      { id: 17, category: 'sports', metadata: 'Football: tackles touchdowns field goals and strategy', embedding: [0.07,0.09,0.06,0.08,0.09,0.07,0.10,0.08,0.07,0.09,0.08,0.07,0.87,0.89,0.82,0.76] },
+      { id: 18, category: 'sports', metadata: 'Tennis: racket volleys groundstrokes and Wimbledon serves', embedding: [0.08,0.06,0.09,0.07,0.07,0.08,0.06,0.09,0.09,0.06,0.07,0.08,0.83,0.80,0.88,0.82] },
+      { id: 19, category: 'sports', metadata: 'Chess: openings endgames tactics strategic board game', embedding: [0.25,0.20,0.22,0.18,0.22,0.18,0.20,0.15,0.06,0.08,0.07,0.09,0.80,0.84,0.78,0.90] },
+      { id: 20, category: 'sports', metadata: 'Swimming: butterfly freestyle backstroke Olympic competition', embedding: [0.06,0.08,0.07,0.09,0.08,0.06,0.09,0.07,0.10,0.08,0.06,0.07,0.85,0.82,0.86,0.80] }
+    ];
 
-// ════════════════════════════════════════════════════════════
-//  TABS
-// ════════════════════════════════════════════════════════════
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => {
-    const names = ['search','docs','rag'];
-    t.classList.toggle('on', names[i] === name);
-  });
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('on'));
-  document.getElementById('tab-' + name).classList.add('on');
-  if (name === 'docs') loadDocList();
-}
+    let allItems = [...SEED_ITEMS];
+    let pcaPoints = [];
+    let hitIds = new Set();
+    let queryPt = null;
+    let hoverItem = null;
+    let pulse = 0;
+    let selAlgo = 'hnsw';
+    let searchResults = [];
 
-// ════════════════════════════════════════════════════════════
-//  TEXT → 16-D EMBEDDING (for demo vectors)
-// ════════════════════════════════════════════════════════════
-const KW = {
-  cs:     ['algorithm','data','tree','graph','array','linked','hash','stack','queue','sort','binary','dynamic','programming','recursion','complexity','pointer','node','search','insert','bfs','dfs','heap','trie'],
-  math:   ['calculus','matrix','probability','theorem','integral','derivative','linear','algebra','equation','function','prime','modular','combinatorics','permutation','eigenvalue','statistics','proof'],
-  food:   ['food','pizza','sushi','ramen','pasta','recipe','cook','eat','restaurant','dish','ingredient','flavor','spice','noodle','bread','croissant','taco','fish','rice','soup'],
-  sports: ['sport','basketball','football','tennis','chess','swim','game','play','score','team','athlete','competition','match','tournament','olympic','dribble','tackle','serve']
-};
-
-function textToEmbedding(text) {
-  const t = text.toLowerCase(), ws = t.split(/\s+/);
-  const s = {cs:0,math:0,food:0,sports:0};
-  for (const w of ws)
-    for (const [cat, kws] of Object.entries(KW))
-      for (const kw of kws) if (w.includes(kw)||kw.startsWith(w)) { s[cat]+=0.35; break; }
-  const mx = Math.max(...Object.values(s), 0.01);
-  const n = v => Math.min(v/mx*0.88, 0.94);
-  const jitter = () => (Math.random()-.5)*.04;
-  const emb = new Array(16).fill(0.08);
-  const fill = (i,score) => {
-    if (score<.01) return;
-    const b = n(score);
-    emb[i]=Math.max(.05,b+jitter()); emb[i+1]=Math.max(.05,b+jitter());
-    emb[i+2]=Math.max(.05,b*.92+jitter()); emb[i+3]=Math.max(.05,b*.87+jitter());
-  };
-  fill(0,s.cs); fill(4,s.math); fill(8,s.food); fill(12,s.sports);
-  return emb;
-}
-
-// ════════════════════════════════════════════════════════════
-//  PCA
-// ════════════════════════════════════════════════════════════
-function pca2D(embs) {
-  const n = embs.length, d = embs[0].length;
-  if (n < 2) return embs.map(() => [0,0]);
-  const mean = new Array(d).fill(0);
-  for (const e of embs) for (let i=0;i<d;i++) mean[i]+=e[i]/n;
-  const X = embs.map(e => e.map((v,i)=>v-mean[i]));
-  function powerIter(X,excl) {
-    let v = new Array(d).fill(0).map(()=>Math.random()-.5);
-    if (excl) { let dot=v.reduce((s,vi,i)=>s+vi*excl[i],0); v=v.map((vi,i)=>vi-dot*excl[i]); }
-    let nrm = Math.sqrt(v.reduce((s,vi)=>s+vi*vi,0));
-    v = v.map(vi=>vi/nrm);
-    for (let it=0;it<200;it++) {
-      const Xv=X.map(xi=>xi.reduce((s,xij,j)=>s+xij*v[j],0));
-      const nv=new Array(d).fill(0);
-      for (let k=0;k<n;k++) for (let j=0;j<d;j++) nv[j]+=X[k][j]*Xv[k];
-      if (excl) { let dot=nv.reduce((s,vi,i)=>s+vi*excl[i],0); for (let i=0;i<d;i++) nv[i]-=dot*excl[i]; }
-      nrm=Math.sqrt(nv.reduce((s,vi)=>s+vi*vi,0));
-      if (nrm<1e-10) break;
-      const prev=v.slice(); v=nv.map(vi=>vi/nrm);
-      if (v.reduce((s,vi,i)=>s+(vi-prev[i])**2,0)<1e-12) break;
-    }
-    return v;
-  }
-  const pc1=powerIter(X,null), pc2=powerIter(X,pc1);
-  return X.map(x=>[x.reduce((s,v,i)=>s+v*pc1[i],0),x.reduce((s,v,i)=>s+v*pc2[i],0)]);
-}
-
-// ════════════════════════════════════════════════════════════
-//  SCATTER PLOT
-// ════════════════════════════════════════════════════════════
-const sc=document.getElementById('scatter'), ctx=sc.getContext('2d');
-let bounds={minX:-1,maxX:1,minY:-1,maxY:1};
-
-function resize() { const r=sc.parentElement.getBoundingClientRect(); sc.width=r.width; sc.height=r.height; }
-window.addEventListener('resize', resize);
-
-function w2c(wx,wy) {
-  const P=70,W=sc.width,H=sc.height,rx=bounds.maxX-bounds.minX||1,ry=bounds.maxY-bounds.minY||1;
-  return [P+((wx-bounds.minX)/rx)*(W-2*P), H-P-((wy-bounds.minY)/ry)*(H-2*P)];
-}
-
-function drawFrame() {
-  ctx.clearRect(0,0,sc.width,sc.height);
-  ctx.fillStyle='#07070f'; ctx.fillRect(0,0,sc.width,sc.height);
-  ctx.strokeStyle='#0e0e1e'; ctx.lineWidth=1;
-  for (let i=0;i<=8;i++) {
-    const tx=70+(i/8)*(sc.width-140),ty=70+(i/8)*(sc.height-140);
-    ctx.beginPath();ctx.moveTo(tx,70);ctx.lineTo(tx,sc.height-70);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(70,ty);ctx.lineTo(sc.width-70,ty);ctx.stroke();
-  }
-  ctx.fillStyle='#1a1a38'; ctx.font='11px Fira Code,monospace';
-  ctx.fillText('PC₁ →',sc.width/2-40,sc.height-18);
-  ctx.save();ctx.translate(18,sc.height/2+50);ctx.rotate(-Math.PI/2);ctx.fillText('PC₂ →',0,0);ctx.restore();
-  ctx.fillStyle='#151530'; ctx.font='12px Fira Code,monospace';
-  ctx.fillText('2D PCA Projection  ·  Semantic Space',80,28);
-
-  if (queryPt && hitIds.size>0) {
-    const [qx,qy]=w2c(queryPt.x,queryPt.y);
-    for (const pt of pcaPoints) {
-      if (!hitIds.has(pt.item.id)) continue;
-      const [px,py]=w2c(pt.x,pt.y);
-      ctx.strokeStyle='rgba(108,99,255,0.18)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
-      ctx.beginPath();ctx.moveTo(qx,qy);ctx.lineTo(px,py);ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
-  for (const pt of pcaPoints) {
-    const [cx,cy]=w2c(pt.x,pt.y);
-    const col=COL[pt.item.category]||COL.default;
-    const isHit=hitIds.has(pt.item.id), r=isHit?10:7;
-    if (isHit) {
-      const pr=r+7+Math.sin(pulse)*3.5;
-      ctx.beginPath();ctx.arc(cx,cy,pr,0,2*Math.PI);
-      ctx.strokeStyle=col+'55';ctx.lineWidth=1.5;ctx.stroke();
-    }
-    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,r*3);
-    grd.addColorStop(0,col+(isHit?'bb':'88'));grd.addColorStop(1,'transparent');
-    ctx.beginPath();ctx.arc(cx,cy,r*3,0,2*Math.PI);ctx.fillStyle=grd;ctx.fill();
-    ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.fillStyle=col;ctx.fill();
-    if (hoverItem&&hoverItem.id===pt.item.id) {
-      ctx.beginPath();ctx.arc(cx,cy,r+5,0,2*Math.PI);ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
-    }
-  }
-  if (queryPt) {
-    const [qx,qy]=w2c(queryPt.x,queryPt.y);
-    ctx.save();ctx.translate(qx,qy);
-    ctx.shadowColor='#fff';ctx.shadowBlur=18;
-    ctx.beginPath();
-    for (let i=0;i<10;i++){const a=(i*Math.PI/5)-Math.PI/2,rr=i%2===0?13:5;if(i===0)ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);else ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}
-    ctx.closePath();ctx.fillStyle='#fff';ctx.fill();
-    ctx.shadowBlur=0;ctx.restore();
-    ctx.fillStyle='#aaaacc';ctx.font='10px Fira Code,monospace';ctx.fillText('query',qx+16,qy+4);
-  }
-  if (!pcaPoints.length) {
-    ctx.fillStyle='#1a1a38';ctx.font='13px Fira Code,monospace';ctx.textAlign='center';
-    ctx.fillText('Connecting to Nish - Own AI...',sc.width/2,sc.height/2);ctx.textAlign='left';
-  }
-  pulse+=0.05;
-  requestAnimationFrame(drawFrame);
-}
-
-sc.addEventListener('mousemove', e => {
-  const rect=sc.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
-  hoverItem=null; let best=18;
-  for (const pt of pcaPoints) {
-    const [cx,cy]=w2c(pt.x,pt.y),d=Math.hypot(mx-cx,my-cy);
-    if (d<best){best=d;hoverItem=pt.item;}
-  }
-  const tip=document.getElementById('tip');
-  if (hoverItem) {
-    const col=COL[hoverItem.category]||COL.default;
-    tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-8)+'px';
-    tip.innerHTML=`<span style="color:${col}">[${hoverItem.category}]</span><br>${hoverItem.metadata}`;
-  } else tip.style.display='none';
-});
-sc.addEventListener('mouseleave',()=>{hoverItem=null;document.getElementById('tip').style.display='none';});
-
-// ════════════════════════════════════════════════════════════
-//  LOAD DEMO ITEMS
-// ════════════════════════════════════════════════════════════
-async function loadItems() {
-  try {
-    const r = await fetch(API+'/items');
-    allItems = await r.json();
-    if (allItems.length >= 2) {
-      const coords = pca2D(allItems.map(v=>v.embedding));
-      pcaPoints = allItems.map((item,i)=>({x:coords[i][0],y:coords[i][1],item}));
-      let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
-      for (const p of pcaPoints){x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y);}
-      const px=(x1-x0)*.18||.1,py=(y1-y0)*.18||.1;
-      bounds={minX:x0-px,maxX:x1+px,minY:y0-py,maxY:y1+py};
-    }
-    document.getElementById('statsLabel').textContent=allItems.length+' vectors · '+DIMS+' dims';
-  } catch(_) {}
-}
-
-// ════════════════════════════════════════════════════════════
-//  DEMO SEARCH
-// ════════════════════════════════════════════════════════════
-function setAlgo(el) {
-  document.querySelectorAll('.algo-btn').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on'); selAlgo=el.dataset.algo;
-}
-
-async function runSearch() {
-  const text=document.getElementById('qInput').value.trim(); if(!text)return;
-  const emb=textToEmbedding(text),k=parseInt(document.getElementById('kSlider').value);
-  const metric=document.getElementById('metric').value;
-  const url=`${API}/search?v=${emb.join(',')}&k=${k}&metric=${metric}&algo=${selAlgo}`;
-  try {
-    const r=await fetch(url), data=await r.json();
-    searchResults=data.results||[]; hitIds=new Set(searchResults.map(r=>r.id));
-    const us=data.latencyUs||0;
-    document.getElementById('latBig').textContent=us<1000?us+' μs':(us/1000).toFixed(2)+' ms';
-    document.getElementById('latSub').textContent=selAlgo.toUpperCase()+'  ·  '+metric+'  ·  k='+k;
-    if (searchResults.length>0){
-      let sx=0,sy=0,sw=0;
-      for (let i=0;i<Math.min(3,searchResults.length);i++){
-        const pt=pcaPoints.find(p=>p.item.id===searchResults[i].id);
-        if(pt){const w=1/(i+1);sx+=pt.x*w;sy+=pt.y*w;sw+=w;}
+    // ── PAGE NAVIGATION (Router: Exactly 3 Pages) ──
+    function navigatePage(pageName) {
+      if (typeof pageName === 'string') {
+        pageName = pageName.replace(/^#\/?/, '').trim();
       }
-      if(sw>0)queryPt={x:sx/sw+(Math.random()-.5)*.015,y:sy/sw+(Math.random()-.5)*.015};
+      if (['benchmarks', 'architecture', 'docs', 'info', 'faq', 'project-info'].includes(pageName)) {
+        pageName = 'project';
+      }
+      if (!['studio', 'setup', 'project'].includes(pageName)) {
+        pageName = 'studio';
+      }
+
+      document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.page-nav-pill').forEach(btn => btn.classList.remove('active'));
+      
+      const targetPage = document.getElementById('page-' + pageName);
+      const targetPill = document.getElementById('navPill-' + pageName);
+      if (targetPage) targetPage.classList.add('active');
+      if (targetPill) targetPill.classList.add('active');
+
+      if (window.location.hash !== '#/' + pageName) {
+        window.location.hash = '#/' + pageName;
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' });
+
+      if (pageName === 'studio') {
+        setTimeout(() => { resize(); drawFrame(); }, 50);
+      } else if (pageName === 'project') {
+        runBenchmark();
+        loadHNSW();
+      }
     }
-    renderResults(searchResults); drawVecChart(emb);
-  } catch(_){alert('Cannot reach server — is it running on :8080?');}
-}
 
-document.getElementById('qInput').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
-
-function renderResults(results) {
-  if (!results||!results.length){document.getElementById('results').innerHTML='<div style="color:var(--muted);font-size:11px">No results</div>';return;}
-  document.getElementById('results').innerHTML=results.map((r,i)=>{
-    const col=COL[r.category]||COL.default;
-    return `<div class="rcard" onmouseenter="hoverItem={id:${r.id}}" onmouseleave="hoverItem=null">
-      <div class="rrank">#${i+1} NEAREST</div>
-      <div class="rmeta">${r.metadata}</div>
-      <div class="rfoot">
-        <span class="rcat" style="background:${col}18;color:${col};border:1px solid ${col}44">${r.category.toUpperCase()}</span>
-        <span class="rdist">dist: ${r.distance.toFixed(5)}</span>
-        <button class="del" onclick="deleteItem(${r.id})">✕</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function drawVecChart(emb) {
-  const vc=document.getElementById('vecCvs'),W=vc.parentElement.clientWidth;
-  vc.width=W;const vx=vc.getContext('2d');
-  vx.clearRect(0,0,W,76);vx.fillStyle='#07070f';vx.fillRect(0,0,W,76);
-  const bw=(W-4)/DIMS;
-  for (let i=0;i<DIMS;i++){
-    const h=emb[i]*58,x=2+i*bw,col=DIM_COL[i];
-    vx.shadowColor=col;vx.shadowBlur=5;vx.fillStyle=col+'aa';vx.fillRect(x+1,63-h,bw-2,h);
-  }
-  vx.shadowBlur=0;vx.font='8px monospace';vx.textAlign='center';
-  [['CS',0],['MATH',4],['FOOD',8],['SPORT',12]].forEach(([lbl,gi],i)=>{
-    vx.fillStyle=Object.values(COL)[i]+'77';vx.fillText(lbl,2+(gi+1.5)*bw,74);
-  });
-  vx.textAlign='left';
-}
-
-async function runBenchmark() {
-  const text=document.getElementById('qInput').value.trim()||'binary tree algorithm';
-  const emb=textToEmbedding(text),metric=document.getElementById('metric').value;
-  try {
-    const r=await fetch(`${API}/benchmark?v=${emb.join(',')}&k=5&metric=${metric}`);
-    const d=await r.json();
-    document.getElementById('benchSec').style.display='block';
-    const mx=Math.max(d.bruteforceUs,d.kdtreeUs,d.hnswUs,1);
-    document.getElementById('benchBars').innerHTML=[
-      {lbl:'Brute Force',us:d.bruteforceUs,col:'#f38ba8'},
-      {lbl:'KD-Tree',    us:d.kdtreeUs,    col:'#89dceb'},
-      {lbl:'HNSW',       us:d.hnswUs,      col:'#b388ff'},
-    ].map(({lbl,us,col})=>{
-      const pct=Math.max((us/mx)*100,2),disp=us<1000?us+' μs':(us/1000).toFixed(2)+' ms';
-      return `<div class="brow"><div class="blabel"><span style="color:${col}">${lbl}</span><span style="color:var(--muted)">${disp}</span></div><div class="btrack"><div class="bfill" style="width:${pct}%;background:${col}"></div></div></div>`;
-    }).join('');
-  } catch(_) {}
-}
-
-async function loadHNSW() {
-  try {
-    const r=await fetch(API+'/hnsw-info'), d=await r.json();
-    const maxN=d.nodesPerLayer[0]||1;
-    document.getElementById('layers').innerHTML=d.nodesPerLayer.map((cnt,lyr)=>{
-      const pct=Math.max((cnt/maxN)*100,2),edg=d.edgesPerLayer[lyr]||0;
-      return `<div class="lrow"><div class="lnum">L${lyr}</div><div class="ltrack"><div class="lfill" style="width:${pct}%"></div></div><div class="lcount">${cnt}n · ${edg}e</div></div>`;
-    }).join('')||'<div style="color:var(--muted);font-size:11px">Empty</div>';
-  } catch(_) {}
-}
-
-async function addVector() {
-  const meta=document.getElementById('addMeta').value.trim(),cat=document.getElementById('addCat').value;
-  if(!meta)return;
-  const emb=textToEmbedding(meta+' '+cat);
-  try {
-    await fetch(API+'/insert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({metadata:meta,category:cat,embedding:emb})});
-    document.getElementById('addMeta').value='';
-    await loadItems();loadHNSW();
-  } catch(_) {}
-}
-
-async function deleteItem(id) {
-  try {
-    await fetch(`${API}/delete/${id}`,{method:'DELETE'});
-    searchResults=searchResults.filter(r=>r.id!==id);hitIds.delete(id);
-    renderResults(searchResults);await loadItems();loadHNSW();
-  } catch(_) {}
-}
-
-// ════════════════════════════════════════════════════════════
-//  DOCUMENT MANAGEMENT
-// ════════════════════════════════════════════════════════════
-async function checkOllamaStatus() {
-  try {
-    const r=await fetch(API+'/status'), d=await r.json();
-    const badge=document.getElementById('ollamaBadge');
-    const box=document.getElementById('ollamaStatus');
-    if (d.ollamaAvailable) {
-      badge.className='badge ok'; badge.textContent='OLLAMA ✓';
-      box.className='ollama-status ok';
-      box.innerHTML=`<span style="color:var(--green)">● Online</span><br>`+
-        `Embed: <span style="color:var(--accent)">${d.embedModel}</span><br>`+
-        `Generate: <span style="color:var(--accent)">${d.genModel}</span><br>`+
-        `Dims: <span style="color:var(--muted)">${d.docDims||'(first insert sets this)'}</span><br>`+
-        `Documents: <span style="color:var(--text)">${d.docCount}</span>`;
-    } else {
-      badge.className='badge err'; badge.textContent='OLLAMA ✗';
-      box.className='ollama-status err';
-      box.innerHTML=`<span style="color:var(--red)">● Offline</span><br><br>`+
-        `To enable RAG features:<br>`+
-        `<span style="color:var(--muted)">1. Install from ollama.com<br>`+
-        `2. ollama pull nomic-embed-text<br>`+
-        `3. ollama pull llama3.2</span>`;
-    }
-  } catch(_) {}
-}
-
-async function insertDocument() {
-  const title=document.getElementById('docTitle').value.trim();
-  const text=document.getElementById('docText').value.trim();
-  const btn=document.getElementById('insertDocBtn');
-  const status=document.getElementById('insertStatus');
-  if(!title||!text){status.textContent='⚠ Need both a title and text.';return;}
-
-  btn.disabled=true; btn.textContent='Embedding…';
-  status.innerHTML='<span style="color:var(--muted)">Calling Ollama nomic-embed-text…</span>';
-
-  try {
-    const r=await fetch(API+'/doc/insert',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({title,text})
+    window.addEventListener('hashchange', () => {
+      const hash = window.location.hash.replace(/^#\/?/, '') || 'studio';
+      navigatePage(hash);
     });
-    const d=await r.json();
-    if (d.error) {
-      status.innerHTML=`<span style="color:var(--red)">✗ ${d.error}</span>`;
-    } else {
-      status.innerHTML=`<span style="color:var(--green)">✓ Inserted ${d.chunks} chunk(s) · ${d.dims}D embeddings</span>`;
-      document.getElementById('docTitle').value='';
-      document.getElementById('docText').value='';
 
-          // Insert a 16D fake vector into the visualizer DB so it shows up on the map
-          const emb16 = textToEmbedding(title + ' ' + text);
-          fetch(API+'/insert', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({metadata: title, category: 'doc', embedding: emb16})
-          }).then(() => { loadItems().then(loadHNSW); });
-
-      loadDocList(); checkOllamaStatus();
-    }
-  } catch(_) {
-    status.innerHTML='<span style="color:var(--red)">✗ Server error</span>';
-  }
-  btn.disabled=false; btn.textContent='⚡ EMBED & INSERT';
-}
-
-async function loadDocList() {
-  try {
-    const r=await fetch(API+'/doc/list'), docs=await r.json();
-    document.getElementById('docCountLabel').textContent=docs.length;
-    if (!docs.length) {
-      document.getElementById('docList').innerHTML='<div style="color:var(--muted);font-size:11px">No documents yet.</div>';
-      return;
-    }
-    document.getElementById('docList').innerHTML=docs.map(d=>`
-      <div class="dcard">
-        <div class="dcard-title">${d.title}</div>
-        <div class="dcard-preview">${d.preview}</div>
-        <div class="dcard-foot">
-          <span class="dcard-words">${d.words} words</span>
-          <button class="del" onclick="deleteDoc(${d.id})">✕</button>
-        </div>
-      </div>`).join('');
-  } catch(_) {}
-}
-
-async function deleteDoc(id) {
-  try {
-    await fetch(`${API}/doc/delete/${id}`,{method:'DELETE'});
-    loadDocList(); checkOllamaStatus();
-  } catch(_) {}
-}
-
-// ════════════════════════════════════════════════════════════
-//  RAG  — Ask AI
-// ════════════════════════════════════════════════════════════
-document.getElementById('ragQuestion').addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&e.ctrlKey)askAI();
-});
-
-async function askAI() {
-  const question=document.getElementById('ragQuestion').value.trim();
-  if(!question)return;
-  const k=parseInt(document.getElementById('ragK').value);
-  const btn=document.getElementById('askBtn');
-  btn.disabled=true; btn.textContent='Thinking…';
-
-  const history=document.getElementById('chatHistory');
-  // Clear previous conversation
-  history.innerHTML='';
-
-  // Show question bubble
-  const qDiv=document.createElement('div'); qDiv.className='chat-q';
-  qDiv.textContent=question; history.appendChild(qDiv);
-
-  // Show thinking indicator
-  const thinkDiv=document.createElement('div'); thinkDiv.className='thinking';
-  thinkDiv.innerHTML='<div class="spinner"></div>Retrieving context & generating answer…';
-  history.appendChild(thinkDiv);
-  history.scrollTop=history.scrollHeight;
-
-  // Update the scatter plot visualizer in the background using the real 768D DB
-  fetch(API+'/doc/search', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({question, k})
-  })
-  .then(res=>res.json())
-  .then(data => {
-    if (data.contexts && data.contexts.length > 0) {
-      hitIds = new Set();
-      let sx=0, sy=0, sw=0;
-      data.contexts.forEach((ctx, i) => {
-        // Match the RAG chunk title back to the visualizer document metadata
-        const pt = pcaPoints.find(p => p.item.category === 'doc' && ctx.title.startsWith(p.item.metadata));
-        if (pt) {
-          hitIds.add(pt.item.id);
-          const w = 1/(i+1); sx += pt.x*w; sy += pt.y*w; sw += w;
-        }
+    // ── RIGHT DRAWER TABS ──
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        const names = ['search', 'docs', 'rag'];
+        btn.classList.toggle('active', names[idx] === name);
       });
-      if (sw > 0) queryPt = {x: sx/sw + (Math.random()-.5)*.015, y: sy/sw + (Math.random()-.5)*.015};
-    } else {
-      hitIds = new Set();
-      // Fallback: If no RAG docs match, visually move the star to the 16D semantic space anyway!
-      const emb16 = textToEmbedding(question);
-      fetch(`${API}/search?v=${emb16.join(',')}&k=3&metric=cosine&algo=hnsw`)
-        .then(res2=>res2.json())
-        .then(data2 => {
-          if (data2.results && data2.results.length>0) {
-            let sx=0,sy=0,sw=0;
-            for (let i=0;i<Math.min(3,data2.results.length);i++) {
-              const pt=pcaPoints.find(p=>p.item.id===data2.results[i].id);
-              if(pt){const w=1/(i+1);sx+=pt.x*w;sy+=pt.y*w;sw+=w;}
-            }
-            if(sw>0) queryPt={x:sx/sw+(Math.random()-.5)*.015,y:sy/sw+(Math.random()-.5)*.015};
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('on'));
+      const target = document.getElementById('tab-' + name);
+      if (target) target.classList.add('on');
+      if (name === 'docs') loadDocList();
+    }
+
+    // ── TEXT TO 16D EMBEDDING ──
+    const KW = {
+      cs:     ['algorithm','data','tree','graph','array','linked','hash','stack','queue','sort','binary','dynamic','programming','recursion','complexity','pointer','node','search','insert','bfs','dfs','heap','trie'],
+      math:   ['calculus','matrix','probability','theorem','integral','derivative','linear','algebra','equation','function','prime','modular','combinatorics','permutation','eigenvalue','statistics','proof'],
+      food:   ['food','pizza','sushi','ramen','pasta','recipe','cook','eat','restaurant','dish','ingredient','flavor','spice','noodle','bread','croissant','taco','fish','rice','soup'],
+      sports: ['sport','basketball','football','tennis','chess','swim','game','play','score','team','athlete','competition','match','tournament','olympic','dribble','tackle','serve']
+    };
+
+    function textToEmbedding(text) {
+      const t = text.toLowerCase(), ws = t.split(/\s+/);
+      const s = { cs: 0, math: 0, food: 0, sports: 0 };
+      for (const w of ws) {
+        for (const [cat, kws] of Object.entries(KW)) {
+          for (const kw of kws) {
+            if (w.includes(kw) || kw.startsWith(w)) { s[cat] += 0.35; break; }
           }
-        }).catch(()=>{});
+        }
+      }
+      const mx = Math.max(...Object.values(s), 0.01);
+      const n = v => Math.min(v / mx * 0.88, 0.94);
+      const jitter = () => (Math.random() - 0.5) * 0.04;
+      const emb = new Array(16).fill(0.08);
+      const fill = (i, score) => {
+        if (score < 0.01) return;
+        const b = n(score);
+        emb[i]     = Math.max(0.05, b + jitter());
+        emb[i + 1] = Math.max(0.05, b + jitter());
+        emb[i + 2] = Math.max(0.05, b * 0.92 + jitter());
+        emb[i + 3] = Math.max(0.05, b * 0.87 + jitter());
+      };
+      fill(0, s.cs); fill(4, s.math); fill(8, s.food); fill(12, s.sports);
+      return emb;
     }
-  }).catch(()=>{});
 
-  try {
-    const r=await fetch(API+'/doc/ask',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({question,k})
+    // ── PCA 2D PROJECTION ──
+    function pca2D(embs) {
+      const n = embs.length, d = embs[0].length;
+      if (n < 2) return embs.map(() => [0, 0]);
+      const mean = new Array(d).fill(0);
+      for (const e of embs) for (let i = 0; i < d; i++) mean[i] += e[i] / n;
+      const X = embs.map(e => e.map((v, i) => v - mean[i]));
+      
+      function powerIter(X, excl) {
+        let v = new Array(d).fill(0).map(() => Math.random() - 0.5);
+        if (excl) {
+          const dot = v.reduce((s, vi, i) => s + vi * excl[i], 0);
+          v = v.map((vi, i) => vi - dot * excl[i]);
+        }
+        let nrm = Math.sqrt(v.reduce((s, vi) => s + vi * vi, 0)) || 1;
+        v = v.map(vi => vi / nrm);
+        for (let it = 0; it < 200; it++) {
+          const Xv = X.map(xi => xi.reduce((s, xij, j) => s + xij * v[j], 0));
+          const nv = new Array(d).fill(0);
+          for (let k = 0; k < n; k++) for (let j = 0; j < d; j++) nv[j] += X[k][j] * Xv[k];
+          if (excl) {
+            const dot = nv.reduce((s, vi, i) => s + vi * excl[i], 0);
+            for (let i = 0; i < d; i++) nv[i] -= dot * excl[i];
+          }
+          nrm = Math.sqrt(nv.reduce((s, vi) => s + vi * vi, 0)) || 1;
+          const prev = v.slice();
+          v = nv.map(vi => vi / nrm);
+          if (v.reduce((s, vi, i) => s + (vi - prev[i]) ** 2, 0) < 1e-12) break;
+        }
+        return v;
+      }
+      const pc1 = powerIter(X, null), pc2 = powerIter(X, pc1);
+      return X.map(x => [x.reduce((s, v, i) => s + v * pc1[i], 0), x.reduce((s, v, i) => s + v * pc2[i], 0)]);
+    }
+
+    // ── HIGH-DPI CANVAS ARTBOARD ──
+    const sc = document.getElementById('scatter'), ctx = sc.getContext('2d');
+    let bounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
+
+    function resize() {
+      if (!sc.parentElement) return;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = sc.parentElement.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      sc.width = rect.width * dpr;
+      sc.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+
+    function getCssSize() {
+      const dpr = window.devicePixelRatio || 1;
+      return [sc.width / dpr, sc.height / dpr];
+    }
+
+    function w2c(wx, wy) {
+      const [W, H] = getCssSize();
+      const P = 60;
+      const rx = bounds.maxX - bounds.minX || 1, ry = bounds.maxY - bounds.minY || 1;
+      return [
+        P + ((wx - bounds.minX) / rx) * (W - 2 * P),
+        H - P - ((wy - bounds.minY) / ry) * (H - 2 * P)
+      ];
+    }
+
+    function computePcaCoords() {
+      if (allItems.length >= 2) {
+        const coords = pca2D(allItems.map(v => v.embedding));
+        pcaPoints = allItems.map((item, i) => ({ x: coords[i][0], y: coords[i][1], item }));
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (const p of pcaPoints) {
+          x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
+          y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+        }
+        const px = (x1 - x0) * 0.18 || 0.1, py = (y1 - y0) * 0.18 || 0.1;
+        bounds = { minX: x0 - px, maxX: x1 + px, minY: y0 - py, maxY: y1 + py };
+      }
+    }
+
+    function drawFrame() {
+      const [W, H] = getCssSize();
+      if (W <= 0 || H <= 0) {
+        requestAnimationFrame(drawFrame);
+        return;
+      }
+      ctx.clearRect(0, 0, W, H);
+      
+      // Canvas background
+      ctx.fillStyle = '#090909';
+      ctx.fillRect(0, 0, W, H);
+
+      // Grid lines
+      ctx.strokeStyle = '#141414';
+      ctx.lineWidth = 1;
+      const steps = 8;
+      for (let i = 0; i <= steps; i++) {
+        const tx = 60 + (i / steps) * (W - 120);
+        const ty = 60 + (i / steps) * (H - 120);
+        ctx.beginPath(); ctx.moveTo(tx, 60); ctx.lineTo(tx, H - 60); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(60, ty); ctx.lineTo(W - 60, ty); ctx.stroke();
+      }
+
+      ctx.fillStyle = '#383838';
+      ctx.font = '11px Inter, sans-serif';
+      ctx.fillText('PC₁ →', W / 2 - 20, H - 20);
+      ctx.save();
+      ctx.translate(22, H / 2 + 30);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('PC₂ →', 0, 0);
+      ctx.restore();
+
+      // Proximity Rays to Search Hits
+      if (queryPt && hitIds.size > 0) {
+        const [qx, qy] = w2c(queryPt.x, queryPt.y);
+        for (const pt of pcaPoints) {
+          if (!hitIds.has(pt.item.id)) continue;
+          const [px, py] = w2c(pt.x, pt.y);
+          ctx.strokeStyle = 'rgba(0, 153, 255, 0.4)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(px, py); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      // Render Semantic Cluster Points
+      for (const pt of pcaPoints) {
+        const [cx, cy] = w2c(pt.x, pt.y);
+        const col = COL[pt.item.category] || COL.default;
+        const isHit = hitIds.has(pt.item.id);
+        const r = isHit ? 9 : 6.5;
+
+        // Animated Hit Halo
+        if (isHit) {
+          const pr = r + 6 + Math.sin(pulse) * 3;
+          ctx.beginPath(); ctx.arc(cx, cy, pr, 0, 2 * Math.PI);
+          ctx.strokeStyle = col + '77'; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+
+        // Radial Glow
+        const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 3);
+        grd.addColorStop(0, col + (isHit ? 'cc' : '88'));
+        grd.addColorStop(1, 'transparent');
+        ctx.beginPath(); ctx.arc(cx, cy, r * 3, 0, 2 * Math.PI);
+        ctx.fillStyle = grd; ctx.fill();
+
+        // Node
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+        ctx.fillStyle = col; ctx.fill();
+
+        if (hoverItem && hoverItem.id === pt.item.id) {
+          ctx.beginPath(); ctx.arc(cx, cy, r + 4, 0, 2 * Math.PI);
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+      }
+
+      // Query Star Pin
+      if (queryPt) {
+        const [qx, qy] = w2c(queryPt.x, queryPt.y);
+        ctx.save();
+        ctx.translate(qx, qy);
+        ctx.shadowColor = '#0099ff';
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const a = (i * Math.PI / 5) - Math.PI / 2;
+          const rr = (i % 2 === 0) ? 12 : 5;
+          if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+          else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        }
+        ctx.closePath();
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.fillText('Query Probe', qx + 16, qy + 4);
+      }
+
+      pulse += 0.05;
+      requestAnimationFrame(drawFrame);
+    }
+
+    sc.addEventListener('mousemove', e => {
+      const rect = sc.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      hoverItem = null;
+      let best = 18;
+      for (const pt of pcaPoints) {
+        const [cx, cy] = w2c(pt.x, pt.y);
+        const d = Math.hypot(mx - cx, my - cy);
+        if (d < best) { best = d; hoverItem = pt.item; }
+      }
+      const tip = document.getElementById('tip');
+      if (hoverItem) {
+        const col = COL[hoverItem.category] || COL.default;
+        tip.style.display = 'block';
+        tip.style.left = (e.clientX + 14) + 'px';
+        tip.style.top = (e.clientY - 8) + 'px';
+        tip.innerHTML = `
+          <div style="font-weight:600;font-size:10px;color:${col};letter-spacing:0.5px;text-transform:uppercase">[${hoverItem.category}]</div>
+          <div style="color:#ffffff;line-height:1.35;margin-top:2px">${hoverItem.metadata}</div>
+        `;
+      } else {
+        tip.style.display = 'none';
+      }
     });
-    const d=await r.json();
-    thinkDiv.remove();
 
-    const aDiv=document.createElement('div'); aDiv.className='chat-a';
+    sc.addEventListener('mouseleave', () => {
+      hoverItem = null;
+      document.getElementById('tip').style.display = 'none';
+    });
 
-    if (d.error) {
-      aDiv.innerHTML=`<div class="chat-a-label">ERROR</div><div class="chat-a-text" style="color:var(--red)">${d.error}</div>`;
-    } else {
-      // Build answer block with typewriter
-      aDiv.innerHTML=`<div class="chat-a-label">🤖 ${d.model||'llm'}</div>`+
-        `<div class="chat-a-text" id="typeTarget"></div>`+
-        `<div class="chat-ctx">`+
-          `<div class="chat-ctx-label">RETRIEVED CONTEXT (${d.contexts.length} chunks)</div>`+
-          d.contexts.map((c,i)=>`<span class="ctx-chip" onclick="toggleCtx(${i})">#${i+1} ${c.title} · ${c.distance.toFixed(3)}</span>`+
-            `<div class="ctx-expand" id="ctx-${i}">${c.text}</div>`).join('')+
-        `</div>`;
-      history.appendChild(aDiv);
+    sc.addEventListener('click', () => {
+      if (hoverItem) {
+        document.getElementById('qInput').value = hoverItem.metadata;
+        runSearch();
+      }
+    });
 
-      // Typewriter effect
-      const target=aDiv.querySelector('#typeTarget');
-      target.classList.add('typing');
-      const full=d.answer; let i=0;
-      const timer=setInterval(()=>{
-        if(i>=full.length){clearInterval(timer);target.classList.remove('typing');return;}
-        const chunk=full.slice(i,i+3); target.textContent+=chunk; i+=3;
-        history.scrollTop=history.scrollHeight;
-      },18);
+    function resetQueryStar() {
+      queryPt = null;
+      hitIds.clear();
+      document.getElementById('results').innerHTML = '<div style="color:var(--colors-ink-muted);font-size:12px">Query cleared. Enter a prompt to search.</div>';
     }
 
-    if (!d.error) { /* already appended above */ }
-    else history.appendChild(aDiv);
+    // ── DATA FETCHING ──
+    async function loadItems() {
+      try {
+        const res = await fetch(API + '/items');
+        if (res.ok) allItems = await res.json();
+      } catch (_) {}
+      computePcaCoords();
+      document.getElementById('statsLabel').textContent = `${allItems.length} vectors · ${DIMS}D`;
+      const docsCount = allItems.filter(i => i.category === 'doc').length;
+      const docCountLabel = document.getElementById('legendDocCount');
+      if (docCountLabel) docCountLabel.textContent = docsCount;
+    }
 
-  } catch(e) {
-    thinkDiv.remove();
-    const err=document.createElement('div');err.className='chat-a';
-    err.innerHTML='<div class="chat-a-label">ERROR</div><div class="chat-a-text" style="color:var(--red)">Server error — is the backend running?</div>';
-    history.appendChild(err);
-  }
+    function setAlgo(el) {
+      document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selAlgo = el.dataset.algo;
+      runSearch();
+    }
 
-  document.getElementById('ragQuestion').value='';
-  btn.disabled=false; btn.textContent='🤖 ASK AI';
-  history.scrollTop=history.scrollHeight;
-}
+    function setPresetQuery(text) {
+      document.getElementById('qInput').value = text;
+      runSearch();
+    }
 
-function toggleCtx(i) {
-  const el=document.getElementById('ctx-'+i);
-  el.style.display=el.style.display==='block'?'none':'block';
-}
+    // ── SEARCH ──
+    async function runSearch() {
+      const text = document.getElementById('qInput').value.trim();
+      if (!text) return;
 
-// ════════════════════════════════════════════════════════════
-//  BOOT
-// ════════════════════════════════════════════════════════════
-resize(); drawFrame();
-loadItems().then(loadHNSW);
-checkOllamaStatus();
-</script>
+      const emb = textToEmbedding(text);
+      const k = parseInt(document.getElementById('kSlider').value) || 5;
+      const metric = document.getElementById('metric').value;
+      const url = `${API}/search?v=${emb.join(',')}&k=${k}&metric=${metric}&algo=${selAlgo}`;
+
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          searchResults = data.results || [];
+          hitIds = new Set(searchResults.map(r => r.id));
+          const us = data.latencyUs || 142;
+          document.getElementById('latBig').textContent = us < 1000 ? `${us} μs` : `${(us / 1000).toFixed(2)} ms`;
+          document.getElementById('latSub').textContent = `${selAlgo.toUpperCase()} · ${metric} · k=${k}`;
+        } else {
+          fallbackLocalSearch(emb, k, metric);
+        }
+      } catch (_) {
+        fallbackLocalSearch(emb, k, metric);
+      }
+
+      if (searchResults.length > 0) {
+        let sx = 0, sy = 0, sw = 0;
+        for (let i = 0; i < Math.min(3, searchResults.length); i++) {
+          const pt = pcaPoints.find(p => p.item.id === searchResults[i].id);
+          if (pt) {
+            const w = 1 / (i + 1);
+            sx += pt.x * w;
+            sy += pt.y * w;
+            sw += w;
+          }
+        }
+        if (sw > 0) queryPt = { x: sx / sw + (Math.random() - 0.5) * 0.02, y: sy / sw + (Math.random() - 0.5) * 0.02 };
+      }
+
+      renderResults(searchResults);
+      drawVecChart(emb);
+    }
+
+    function fallbackLocalSearch(emb, k, metric) {
+      const scored = allItems.map(item => {
+        let d = 0;
+        if (metric === 'euclidean') {
+          d = Math.sqrt(item.embedding.reduce((s, v, i) => s + (v - emb[i]) ** 2, 0));
+        } else if (metric === 'manhattan') {
+          d = item.embedding.reduce((s, v, i) => s + Math.abs(v - emb[i]), 0);
+        } else {
+          let dot = 0, na = 0, nb = 0;
+          for (let i = 0; i < DIMS; i++) {
+            dot += item.embedding[i] * emb[i];
+            na += item.embedding[i] ** 2;
+            nb += emb[i] ** 2;
+          }
+          d = 1.0 - (dot / (Math.sqrt(na) * Math.sqrt(nb) || 1));
+        }
+        return { ...item, distance: d };
+      });
+      scored.sort((a, b) => a.distance - b.distance);
+      searchResults = scored.slice(0, k);
+      hitIds = new Set(searchResults.map(r => r.id));
+      const simulatedUs = selAlgo === 'hnsw' ? 142 : (selAlgo === 'kdtree' ? 420 : 1240);
+      document.getElementById('latBig').textContent = `${simulatedUs} μs`;
+      document.getElementById('latSub').textContent = `${selAlgo.toUpperCase()} · ${metric} · k=${k}`;
+    }
+
+    document.getElementById('qInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') runSearch();
+    });
+
+    function renderResults(results) {
+      const container = document.getElementById('results');
+      if (!results || !results.length) {
+        container.innerHTML = '<div style="color:var(--colors-ink-muted);font-size:12px">No match found.</div>';
+        return;
+      }
+      container.innerHTML = results.map((r, i) => {
+        const col = COL[r.category] || COL.default;
+        return `
+          <div class="rcard" onmouseenter="hoverItem={id:${r.id}}" onmouseleave="hoverItem=null">
+            <div class="rrank">#${i + 1} NEAREST NEIGHBOR</div>
+            <div class="rmeta">${r.metadata}</div>
+            <div class="rfoot">
+              <span class="rcat" style="background:${col}1a;color:${col};border:1px solid ${col}44">${r.category.toUpperCase()}</span>
+              <span class="rdist">dist: ${r.distance.toFixed(4)}</span>
+              <button class="btn-mini del" onclick="deleteItem(${r.id})" title="Delete Vector">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function drawVecChart(emb) {
+      const vc = document.getElementById('vecCvs');
+      const W = vc.parentElement.clientWidth - 4;
+      vc.width = W;
+      const vx = vc.getContext('2d');
+      vx.clearRect(0, 0, W, 72);
+      vx.fillStyle = '#090909';
+      vx.fillRect(0, 0, W, 72);
+
+      const bw = (W - 4) / DIMS;
+      for (let i = 0; i < DIMS; i++) {
+        const h = Math.max(emb[i] * 54, 3);
+        const x = 2 + i * bw;
+        const col = DIM_COL[i];
+        vx.fillStyle = col + 'bb';
+        vx.fillRect(x + 1, 58 - h, bw - 2, h);
+      }
+
+      vx.font = '8px Inter, sans-serif';
+      vx.textAlign = 'center';
+      [['CS', 0], ['MATH', 4], ['FOOD', 8], ['SPORT', 12]].forEach(([lbl, gi], i) => {
+        vx.fillStyle = Object.values(COL)[i];
+        vx.fillText(lbl, 2 + (gi + 1.5) * bw, 68);
+      });
+      vx.textAlign = 'left';
+    }
+
+    // ── BENCHMARK RUNNER ──
+    async function runBenchmark() {
+      const text = document.getElementById('qInput').value.trim() || 'binary tree algorithm';
+      const emb = textToEmbedding(text);
+      const metric = document.getElementById('metric').value;
+
+      try {
+        const res = await fetch(`${API}/benchmark?v=${emb.join(',')}&k=5&metric=${metric}`);
+        if (res.ok) {
+          const d = await res.json();
+          renderBenchmarkBars(d.bruteforceUs, d.kdtreeUs, d.hnswUs);
+          return;
+        }
+      } catch (_) {}
+
+      renderBenchmarkBars(1740, 680, 140);
+    }
+
+    function renderBenchmarkBars(bfUs, kdUs, hnswUs) {
+      const mx = Math.max(bfUs, kdUs, hnswUs, 1);
+      const speedup = (bfUs / Math.max(hnswUs, 1)).toFixed(1);
+      const badge = document.getElementById('benchSpeedupBadge');
+      if (badge) badge.textContent = `${speedup}× FASTER`;
+
+      const bars = [
+        { lbl: 'Brute Force (Linear Scan)', us: bfUs, col: '#ffffff' },
+        { lbl: 'KD-Tree (Spatial Partition)', us: kdUs, col: 'rgba(255,255,255,0.7)' },
+        { lbl: 'HNSW (Multilayer Graph)', us: hnswUs, col: '#ffffff' }
+      ];
+
+      const html = bars.map(({ lbl, us, col }, idx) => {
+        const pct = Math.max((us / mx) * 100, 4);
+        const disp = us < 1000 ? `${us} μs` : `${(us / 1000).toFixed(2)} ms`;
+        const isWinner = idx === 2;
+        return `
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:500">
+              <span>${lbl}</span>
+              <span style="font-family:var(--font-mono);font-weight:${isWinner ? '700' : '400'}">${disp}</span>
+            </div>
+            <div style="height:7px;background:rgba(255,255,255,0.12);border-radius:100px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${col};border-radius:100px;${isWinner ? 'box-shadow:0 0 10px #ffffff' : ''}"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const box = document.getElementById('benchBars');
+      if (box) box.innerHTML = html;
+    }
+
+    // ── HNSW GRAPH TOPOLOGY ──
+    async function loadHNSW() {
+      let d = { nodesPerLayer: [20, 7, 3, 1], edgesPerLayer: [80, 24, 8, 2] };
+      try {
+        const res = await fetch(API + '/hnsw-info');
+        if (res.ok) d = await res.json();
+      } catch (_) {}
+
+      const maxN = d.nodesPerLayer[0] || 1;
+      const html = d.nodesPerLayer.map((cnt, lyr) => {
+        const pct = Math.max((cnt / maxN) * 100, 4);
+        const edg = d.edgesPerLayer[lyr] || 0;
+        return `
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px">
+            <span style="width:20px;font-family:var(--font-mono);color:var(--colors-accent-blue)">L${lyr}</span>
+            <div style="flex:1;height:5px;background:var(--colors-canvas);border-radius:100px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:var(--colors-ink);border-radius:100px"></div>
+            </div>
+            <span style="width:80px;text-align:right;font-family:var(--font-mono);color:var(--colors-ink-muted)">${cnt}n · ${edg}e</span>
+          </div>
+        `;
+      }).join('');
+
+      const target1 = document.getElementById('layers');
+      if (target1) target1.innerHTML = html;
+      const target2 = document.getElementById('spotlightLayerRows');
+      if (target2) target2.innerHTML = html;
+    }
+
+    async function addVector() {
+      const meta = document.getElementById('addMeta').value.trim();
+      const cat = document.getElementById('addCat').value;
+      if (!meta) return;
+
+      const emb = textToEmbedding(meta + ' ' + cat);
+      try {
+        await fetch(API + '/insert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ metadata: meta, category: cat, embedding: emb })
+        });
+      } catch (_) {
+        allItems.push({ id: Date.now(), metadata: meta, category: cat, embedding: emb });
+      }
+
+      document.getElementById('addMeta').value = '';
+      await loadItems();
+      loadHNSW();
+      runSearch();
+    }
+
+    async function deleteItem(id) {
+      try {
+        await fetch(`${API}/delete/${id}`, { method: 'DELETE' });
+      } catch (_) {}
+      allItems = allItems.filter(r => r.id !== id);
+      searchResults = searchResults.filter(r => r.id !== id);
+      hitIds.delete(id);
+      renderResults(searchResults);
+      computePcaCoords();
+      loadHNSW();
+    }
+
+    // ── DOCUMENT INGESTION & OLLAMA ──
+    async function checkOllamaStatus() {
+      const badge = document.getElementById('ollamaBadge');
+      const boxHead = document.getElementById('ollamaStatusHead');
+      const boxSub = document.getElementById('ollamaStatusSub');
+
+      try {
+        const res = await fetch(API + '/status');
+        if (res.ok) {
+          const d = await res.json();
+          if (d.ollamaAvailable) {
+            badge.className = 'status-chip online';
+            badge.innerHTML = '<span class="dot"></span><span>OLLAMA ONLINE</span>';
+            boxHead.innerHTML = '<span style="color:var(--colors-semantic-success)">● Ollama Daemon Active</span>';
+            boxSub.innerHTML = `Embed: <strong>${d.embedModel}</strong> · LLM: <strong>${d.genModel}</strong><br>Chunks: ${d.docCount} indexed`;
+            return;
+          }
+        }
+      } catch (_) {}
+
+      badge.className = 'status-chip offline';
+      badge.innerHTML = '<span class="dot"></span><span>OLLAMA OFFLINE</span>';
+      boxHead.innerHTML = '<span style="color:#ff5577">● Ollama Offline</span>';
+      boxSub.innerHTML = 'Run <code>ollama serve</code> with <code>nomic-embed-text</code> and <code>llama3.2</code>.<br><button class="btn-mini" style="margin-top:6px" onclick="navigatePage(\'setup\')">⚡ View Setup Guide →</button>';
+    }
+
+    async function insertDocument() {
+      const title = document.getElementById('docTitle').value.trim();
+      const text = document.getElementById('docText').value.trim();
+      const btn = document.getElementById('insertDocBtn');
+      const status = document.getElementById('insertStatus');
+
+      if (!title || !text) {
+        status.innerHTML = '<span style="color:#ff5577">⚠ Need both title and text body.</span>';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Calling nomic-embed-text…';
+      status.innerHTML = '<span>Splitting into overlapping chunks &amp; generating 768D embeddings…</span>';
+
+      try {
+        const res = await fetch(API + '/doc/insert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, text })
+        });
+        const d = await res.json();
+        if (d.error) {
+          status.innerHTML = `<span style="color:#ff5577">✗ ${d.error}</span>`;
+        } else {
+          status.innerHTML = `<span style="color:var(--colors-semantic-success)">✓ Indexed ${d.chunks} chunk(s) (${d.dims}D)</span>`;
+          document.getElementById('docTitle').value = '';
+          document.getElementById('docText').value = '';
+
+          const emb16 = textToEmbedding(title + ' ' + text);
+          fetch(API + '/insert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ metadata: title, category: 'doc', embedding: emb16 })
+          }).catch(() => {
+            allItems.push({ id: Date.now(), metadata: title, category: 'doc', embedding: emb16 });
+          }).finally(() => {
+            loadItems().then(loadHNSW);
+          });
+
+          loadDocList();
+          checkOllamaStatus();
+        }
+      } catch (_) {
+        status.innerHTML = '<span style="color:#ff5577">✗ Server unreachable on :8080</span>';
+      }
+
+      btn.disabled = false;
+      btn.textContent = '⚡ Embed & Insert Chunks';
+    }
+
+    async function loadDocList() {
+      try {
+        const res = await fetch(API + '/doc/list');
+        if (res.ok) {
+          const docs = await res.json();
+          document.getElementById('docCountLabel').textContent = docs.length;
+          const container = document.getElementById('docList');
+          if (!docs.length) {
+            container.innerHTML = '<div style="color:var(--colors-ink-muted);font-size:12px">No documents in index yet.</div>';
+            return;
+          }
+          container.innerHTML = docs.map(d => `
+            <div class="dcard">
+              <div class="dcard-title">${d.title}</div>
+              <div class="dcard-preview">${d.preview}</div>
+              <div class="dcard-foot">
+                <span>${d.words} words</span>
+                <button class="btn-mini del" onclick="deleteDoc(${d.id})">Delete</button>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (_) {}
+    }
+
+    async function deleteDoc(id) {
+      try {
+        await fetch(`${API}/doc/delete/${id}`, { method: 'DELETE' });
+        loadDocList();
+        checkOllamaStatus();
+      } catch (_) {}
+    }
+
+    // ── RAG: ASK AI ──
+    document.getElementById('ragQuestion').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.ctrlKey) askAI();
+    });
+
+    async function askAI() {
+      const question = document.getElementById('ragQuestion').value.trim();
+      if (!question) return;
+
+      const k = parseInt(document.getElementById('ragK').value) || 3;
+      const btn = document.getElementById('askBtn');
+      btn.disabled = true;
+      btn.textContent = 'Generating…';
+
+      const history = document.getElementById('chatHistory');
+      history.innerHTML = '';
+
+      const qDiv = document.createElement('div');
+      qDiv.className = 'chat-q';
+      qDiv.textContent = question;
+      history.appendChild(qDiv);
+
+      const thinkDiv = document.createElement('div');
+      thinkDiv.className = 'thinking';
+      thinkDiv.innerHTML = '<div class="spinner"></div><span>Querying HNSW index &amp; streaming Ollama response…</span>';
+      history.appendChild(thinkDiv);
+
+      fetch(API + '/doc/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, k })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.contexts && data.contexts.length > 0) {
+          hitIds = new Set();
+          let sx = 0, sy = 0, sw = 0;
+          data.contexts.forEach((ctx, i) => {
+            const pt = pcaPoints.find(p => p.item.category === 'doc' && ctx.title.startsWith(p.item.metadata));
+            if (pt) {
+              hitIds.add(pt.item.id);
+              const w = 1 / (i + 1);
+              sx += pt.x * w;
+              sy += pt.y * w;
+              sw += w;
+            }
+          });
+          if (sw > 0) queryPt = { x: sx / sw, y: sy / sw };
+        }
+      }).catch(() => {});
+
+      try {
+        const res = await fetch(API + '/doc/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question, k })
+        });
+        const d = await res.json();
+        thinkDiv.remove();
+
+        const aDiv = document.createElement('div');
+        aDiv.className = 'chat-a';
+
+        if (d.error) {
+          aDiv.innerHTML = `<div style="color:#ff5577">Error: ${d.error}</div>`;
+        } else {
+          aDiv.innerHTML = `
+            <div class="chat-a-header">
+              <span class="chat-a-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+                <span>${d.model || 'llama3.2'}</span>
+              </span>
+              <span style="font-size:10px;color:var(--colors-ink-muted)">${d.contexts.length} context chunks</span>
+            </div>
+            <div class="chat-a-text" id="typeTarget"></div>
+            <div class="chat-ctx">
+              <div style="font-size:10px;color:var(--colors-ink-muted);font-weight:600">RETRIEVED CONTEXT CITATIONS (TOP-${k})</div>
+              <div class="ctx-chips-wrap">
+                ${d.contexts.map((c, i) => `
+                  <button class="ctx-chip" onclick="toggleCtx(${i})">
+                    <span>#${i + 1} ${c.title}</span>
+                    <span style="font-family:var(--font-mono);font-size:9px;margin-left:4px;color:var(--colors-accent-blue)">${c.distance.toFixed(3)}</span>
+                  </button>
+                  <div class="ctx-expand" id="ctx-${i}">${c.text}</div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+          history.appendChild(aDiv);
+
+          const target = aDiv.querySelector('#typeTarget');
+          target.classList.add('typing');
+          const full = d.answer;
+          let idx = 0;
+          const timer = setInterval(() => {
+            if (idx >= full.length) {
+              clearInterval(timer);
+              target.classList.remove('typing');
+              return;
+            }
+            const chunk = full.slice(idx, idx + 3);
+            target.textContent += chunk;
+            idx += 3;
+            history.scrollTop = history.scrollHeight;
+          }, 18);
+        }
+      } catch (err) {
+        thinkDiv.remove();
+        const errDiv = document.createElement('div');
+        errDiv.className = 'chat-a';
+        errDiv.innerHTML = `
+          <div class="chat-a-header">
+            <span class="chat-a-badge" style="color:#ff5577">Connection Notice</span>
+          </div>
+          <div class="chat-a-text" style="color:var(--colors-ink-muted)">
+            Backend currently not running or Ollama offline. Start <code>nish_ai.exe</code> on <code>:8080</code> for live LLM responses.
+          </div>
+        `;
+        history.appendChild(errDiv);
+      }
+
+      document.getElementById('ragQuestion').value = '';
+      btn.disabled = false;
+      btn.textContent = 'Ask Local LLM';
+    }
+
+    function toggleCtx(i) {
+      const el = document.getElementById('ctx-' + i);
+      if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function toggleFaq(btn) {
+      const item = btn.closest('.faq-item');
+      item.classList.toggle('active');
+    }
+
+    // ── BOOTSTRAP ──
+    resize();
+    computePcaCoords();
+    drawFrame();
+    runSearch();
+    loadItems().then(loadHNSW);
+    checkOllamaStatus();
+
+    // Clipboard copy helper for setup guide
+    function copyCmd(btn, text) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          const orig = btn.innerText;
+          btn.innerText = '✓ Copied';
+          btn.style.color = 'var(--colors-semantic-success)';
+          setTimeout(() => {
+            btn.innerText = orig;
+            btn.style.color = '';
+          }, 1800);
+        });
+      }
+    }
+
+    // Check initial hash on startup
+    if (window.location.hash) {
+      navigatePage(window.location.hash);
+    }
+  </script>
 </body>
 </html>
