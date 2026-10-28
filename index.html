@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>Nish: Own AI — Vector Database &amp; RAG Engine</title>
   <meta name="description" content="Nish: Own AI — An AI-powered vector database and local RAG engine built in C++. Interactive 2D PCA artboard, HNSW graph search, and local LLM orchestration.">
 
@@ -992,22 +992,369 @@
       border-radius: 2px;
     }
 
-    /* Responsive */
-    @media (max-width: 900px) {
-      #page-studio {
-        flex-direction: column;
-        overflow-y: auto;
+
+    /* =====================================================================
+       MOBILE PHONE SCREEN OPTIMIZATION (<= 768px)
+       Strict Constraint: 0 Changes to Desktop / Laptop Screens (> 768px)
+       ===================================================================== */
+    @media (max-width: 768px) {
+      html, body {
+        height: 100% !important;
+        width: 100vw !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
       }
-      .studio-left, .studio-right {
-        width: 100%;
-        border-left: none;
-        border-right: none;
+
+      body {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
       }
-      .studio-center {
-        min-height: 400px;
+
+      /* Prevent iOS Safari from automatic zooming when focusing inputs */
+      .input-text, select, textarea {
+        font-size: 16px !important;
       }
+
+      /* Top Navigation Bar: Clean 2-Row Mobile App Header */
       .top-nav {
-        padding: 0 12px;
+        height: auto !important;
+        min-height: 52px;
+        padding: 8px 12px 10px !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        background: rgba(20, 20, 20, 0.96) !important;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--colors-hairline);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      }
+
+      .nav-left {
+        flex: 1;
+        min-width: 0;
+        gap: 8px;
+      }
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        flex-shrink: 0;
+      }
+      .brand-title {
+        font-size: 15px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .status-chip {
+        padding: 3px 8px;
+        font-size: 10px;
+        height: 26px;
+      }
+      #statsLabel {
+        display: none !important; /* Hide secondary stats in header on mobile to avoid horizontal squishing */
+      }
+
+      .nav-center {
+        width: 100%;
+        order: 3;
+        display: flex;
+      }
+      .nav-center .pill-group {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        gap: 4px;
+        padding: 3px;
+        background-color: var(--colors-canvas);
+        border: 1px solid var(--colors-hairline);
+        border-radius: var(--rounded-pill);
+      }
+      .page-nav-pill {
+        flex: 1;
+        text-align: center;
+        padding: 7px 6px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        border-radius: var(--rounded-pill);
+        min-height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Viewport */
+      .viewport {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        height: auto !important;
+        min-height: calc(100vh - 100px);
+      }
+
+      .page-view {
+        height: auto !important;
+        min-height: 100%;
+        overflow-y: visible !important;
+        overflow-x: hidden !important;
+      }
+
+      /* Studio Workspace on Mobile: All on the same page sequentially like earlier */
+      #page-studio {
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 100%;
+        overflow-y: visible !important;
+        overflow-x: hidden !important;
+      }
+
+      .studio-left {
+        width: 100% !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--colors-hairline) !important;
+        padding: 16px 14px !important;
+        gap: 14px !important;
+        overflow-y: visible !important;
+      }
+
+      .studio-center {
+        width: 100% !important;
+        height: 400px !important;
+        min-height: 360px !important;
+        border-top: none !important;
+        border-bottom: 1px solid var(--colors-hairline) !important;
+        position: relative;
+      }
+
+      .studio-right {
+        width: 100% !important;
+        border-left: none !important;
+        overflow-y: visible !important;
+      }
+
+      .drawer-header {
+        position: relative;
+        background-color: var(--colors-surface-1);
+        z-index: 20;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--colors-hairline);
+      }
+      .drawer-header .pill-group {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+      }
+      .drawer-header .pill-tab {
+        flex: 1;
+        text-align: center;
+        padding: 6px 4px;
+        font-size: 12px;
+      }
+      .tab-content {
+        padding: 12px 14px 30px;
+        gap: 12px;
+        overflow-y: visible !important;
+      }
+
+      /* Metric Hero */
+      .metric-hero {
+        padding: 10px 12px;
+      }
+      .lat-big {
+        font-size: 26px;
+        letter-spacing: -0.8px;
+      }
+
+      /* Buttons & Touch Targets */
+      .btn-mini {
+        padding: 5px 10px;
+        font-size: 11px;
+        min-height: 28px;
+        display: inline-flex;
+        align-items: center;
+      }
+      .pill-tab {
+        min-height: 30px;
+      }
+      .btn-primary, .btn-secondary {
+        min-height: 38px;
+      }
+
+      /* Artboard Header Bar on Mobile */
+      .artboard-header-bar {
+        top: 8px;
+        left: 10px;
+        right: 10px;
+        gap: 6px;
+      }
+      .artboard-title-badge {
+        padding: 4px 10px;
+        font-size: 11px;
+      }
+      .artboard-title-badge span:last-child {
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Tooltip Safe Anchoring on Mobile */
+      #tip {
+        max-width: 85vw;
+        font-size: 11px;
+        padding: 6px 10px;
+        pointer-events: none;
+      }
+
+      /* Subpages (Setup Guide & Project Information) */
+      .subpage-container {
+        padding: 14px 12px 60px !important;
+        height: auto !important;
+        min-height: 100%;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .subpage-inner {
+        gap: 16px;
+      }
+      .subpage-header {
+        flex-direction: column-reverse;
+        align-items: flex-start;
+        gap: 10px;
+        padding-bottom: 14px;
+      }
+      .subpage-header > div {
+        width: 100%;
+      }
+      .back-btn {
+        align-self: flex-start;
+        padding: 6px 12px;
+        font-size: 12px;
+        min-height: 32px;
+      }
+      .type-display-md {
+        font-size: 22px;
+        letter-spacing: -0.6px;
+        line-height: 1.15;
+      }
+      .type-headline {
+        font-size: 16px;
+        letter-spacing: -0.4px;
+      }
+      .type-subhead {
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      /* Cards on Mobile */
+      .step-card {
+        padding: 16px 12px;
+        gap: 12px;
+        border-radius: var(--rounded-lg);
+      }
+      .prereq-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px;
+      }
+      .prereq-card {
+        padding: 14px 12px;
+      }
+
+      /* Spotlight Cards */
+      .spotlight-card-magenta,
+      .spotlight-card-violet {
+        padding: 18px 14px;
+        gap: 14px;
+        border-radius: var(--rounded-xl);
+      }
+      .spotlight-card-magenta h2,
+      .spotlight-card-violet h2 {
+        font-size: 20px !important;
+        line-height: 1.2 !important;
+      }
+      .spotlight-tag {
+        font-size: 10px;
+        padding: 3px 8px;
+      }
+
+      /* Code boxes on mobile */
+      .code-box {
+        padding: 8px 10px;
+        font-size: 12px;
+        gap: 8px;
+      }
+      .code-box code {
+        min-width: 0;
+        flex: 1;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        font-size: 11px;
+      }
+      .copy-btn {
+        padding: 5px 9px;
+        font-size: 10px;
+        min-height: 28px;
+      }
+
+      /* Tables: Responsive Horizontal Scroll Container */
+      .comparison-table-wrap {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        border-radius: var(--rounded-md);
+      }
+      .comp-table {
+        min-width: 520px;
+        width: 100%;
+      }
+      .comp-table th, .comp-table td {
+        padding: 9px 12px;
+        font-size: 12px;
+        white-space: normal;
+      }
+
+      /* 2-Column Grids Stack into 1 Column on Mobile */
+      .grid-2col-mobile {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+      }
+    }
+
+    /* Small Mobile Phones (<= 380px) */
+    @media (max-width: 380px) {
+      .brand-title {
+        font-size: 13px;
+      }
+      .page-nav-pill {
+        font-size: 11px;
+        padding: 6px 3px;
+      }
+      .mobile-studio-pill {
+        font-size: 10px;
+        padding: 5px 2px;
+      }
+      .type-display-md {
+        font-size: 19px;
+      }
+      .comp-table {
+        min-width: 460px;
       }
     }
   </style>
@@ -1063,7 +1410,7 @@
       <aside class="studio-left">
         
         <!-- Query Input -->
-        <div class="rack-group">
+        <div class="rack-group rack-group-query">
           <label class="rack-label" for="qInput">
             <span>Query Vector</span>
             <span style="color:var(--colors-accent-blue);font-size:10px">16-D Synthesizer</span>
@@ -1075,7 +1422,7 @@
         </div>
 
         <!-- Algorithm Toggles -->
-        <div class="rack-group">
+        <div class="rack-group rack-group-algo">
           <span class="rack-label">Search Algorithm</span>
           <div class="pill-group" style="width:100%;justify-content:space-between">
             <button class="pill-tab algo-btn active" data-algo="hnsw" onclick="setAlgo(this)">HNSW</button>
@@ -1085,7 +1432,7 @@
         </div>
 
         <!-- Distance Metric -->
-        <div class="rack-group">
+        <div class="rack-group rack-group-metric">
           <label class="rack-label" for="metric">Distance Metric</label>
           <select id="metric" onchange="runSearch()">
             <option value="cosine" selected>Cosine Similarity</option>
@@ -1095,7 +1442,7 @@
         </div>
 
         <!-- Top-K Slider -->
-        <div class="rack-group">
+        <div class="rack-group rack-group-topk">
           <div class="rack-label">
             <span>Top-K Matches</span>
             <span id="kLabel" style="font-family:var(--font-mono);color:var(--colors-ink)">5</span>
@@ -1104,7 +1451,7 @@
         </div>
 
         <!-- Preset Semantic Prompts -->
-        <div class="rack-group">
+        <div class="rack-group rack-group-prompts">
           <span class="rack-label">Quick Prompts</span>
           <div style="display:flex;flex-wrap:wrap;gap:4px">
             <button class="btn-mini" onclick="setPresetQuery('Dynamic Programming')">Dynamic Prog</button>
@@ -1116,7 +1463,7 @@
         </div>
 
         <!-- Category Legend -->
-        <div class="rack-group">
+        <div class="rack-group rack-group-legend">
           <span class="rack-label">Cluster Legend</span>
           <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--colors-ink-muted)">
             <div style="display:flex;align-items:center;justify-content:space-between">
@@ -1143,7 +1490,7 @@
         </div>
 
         <!-- Add Vector -->
-        <div class="rack-group" style="padding-top:10px;border-top:1px solid var(--colors-hairline-soft)">
+        <div class="rack-group rack-group-add" style="padding-top:10px;border-top:1px solid var(--colors-hairline-soft)">
           <span class="rack-label">Add Demo Vector</span>
           <input type="text" id="addMeta" class="input-text" placeholder="Description (e.g. Graph Traversal)" />
           <select id="addCat" style="margin-top:4px">
@@ -1157,7 +1504,7 @@
           </button>
         </div>
 
-        <button class="btn-mini" style="margin-top:auto" onclick="navigatePage('project')">
+        <button class="btn-mini rack-group-link" style="margin-top:auto" onclick="navigatePage('project')">
           <span>▶ View Project Info &amp; Benchmarks →</span>
         </button>
 
@@ -1784,7 +2131,7 @@ Your Text<br>
           <div style="background-color:var(--colors-surface-1);border:1px solid var(--colors-hairline);border-radius:var(--rounded-xl);padding:26px;display:flex;flex-direction:column;gap:18px">
             <h2 class="type-headline">Project Architecture &amp; C++ Code Structure</h2>
             
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="grid-2col-mobile" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
               <div>
                 <h3 style="font-size:13px;font-weight:600;color:var(--colors-ink);margin-bottom:8px">Directory Organization:</h3>
                 <div style="background:var(--colors-canvas);border:1px solid var(--colors-hairline);border-radius:8px;padding:14px;font-family:var(--font-mono);font-size:12px;color:var(--colors-ink);line-height:1.6">
@@ -1980,6 +2327,12 @@ OllamaClient &nbsp;HTTP client for /embeddings &amp; /generate
       } else if (pageName === 'project') {
         runBenchmark();
         loadHNSW();
+      }
+
+      if (window.innerWidth <= 768) {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        const sub = targetPage ? targetPage.querySelector('.subpage-container') : null;
+        if (sub) sub.scrollTop = 0;
       }
     }
 
@@ -2253,6 +2606,55 @@ OllamaClient &nbsp;HTTP client for /embeddings &amp; /generate
       if (hoverItem) {
         document.getElementById('qInput').value = hoverItem.metadata;
         runSearch();
+      }
+    });
+
+    // ── MOBILE TOUCH INTERACTION FOR 2D PCA CANVAS ──
+    function handleCanvasTouch(e, isTap) {
+      if (!e.touches || e.touches.length === 0) return;
+      const touch = e.touches[0];
+      const rect = sc.getBoundingClientRect();
+      const mx = touch.clientX - rect.left, my = touch.clientY - rect.top;
+      hoverItem = null;
+      let best = 32; // Expanded touch radius for precision tapping with fingers
+      for (const pt of pcaPoints) {
+        const [cx, cy] = w2c(pt.x, pt.y);
+        const d = Math.hypot(mx - cx, my - cy);
+        if (d < best) { best = d; hoverItem = pt.item; }
+      }
+      const tip = document.getElementById('tip');
+      if (hoverItem) {
+        if (e.cancelable) e.preventDefault();
+        const col = COL[hoverItem.category] || COL.default;
+        tip.style.display = 'block';
+        const tipX = Math.min(Math.max(12, touch.clientX - 100), window.innerWidth - 220);
+        const tipY = Math.max(12, touch.clientY - 75);
+        tip.style.left = tipX + 'px';
+        tip.style.top = tipY + 'px';
+        tip.innerHTML = `
+          <div style="font-weight:600;font-size:10px;color:${col};letter-spacing:0.5px;text-transform:uppercase">[${hoverItem.category}]</div>
+          <div style="color:#ffffff;line-height:1.35;margin-top:2px">${hoverItem.metadata}</div>
+        `;
+        if (isTap) {
+          document.getElementById('qInput').value = hoverItem.metadata;
+          runSearch();
+        }
+      } else if (!isTap) {
+        tip.style.display = 'none';
+      }
+    }
+
+    sc.addEventListener('touchstart', e => handleCanvasTouch(e, false), { passive: false });
+    sc.addEventListener('touchmove', e => handleCanvasTouch(e, false), { passive: false });
+    sc.addEventListener('touchend', e => {
+      if (hoverItem) {
+        document.getElementById('qInput').value = hoverItem.metadata;
+        runSearch();
+        setTimeout(() => {
+          hoverItem = null;
+          const tip = document.getElementById('tip');
+          if (tip) tip.style.display = 'none';
+        }, 2200);
       }
     });
 
